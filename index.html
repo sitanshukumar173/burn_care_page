@@ -1499,6 +1499,80 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 { name: 'IGIMS Indira Gandhi Institute of Medical Sciences', kind: 'hospital', lat: 25.6175, lon: 85.0847, burn_unit: true, major: true, phone: '0612-2297099' }
             ]
         };
+        const OVERPASS_URLS = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+            'https://overpass.private.coffee/api/interpreter'
+        ];
+        const IRRELEVANT_FACILITY = /\b(eye|netra|nethralaya|ophthalm|dental|dentist|urology|fertility|diagnostic|pathology|laboratory|veterinary|animal|psychiatr|rehab|cancer|oncology)\b/i;
+        const CAMPUS_PART = /\b(block|wing|ward|building|gate)\b/i;
+        const MAJOR_FACILITY = /\b(aiims|medical college|medical sciences|government|govt|sadar|district hospital|general hospital|civil hospital|referral hospital|pmch|igims|nmch)\b/i;
+        const timedFetch = (url, options, timeoutMs = 12000) => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            return fetch(url, { ...(options || {}), signal: controller.signal }).finally(() => clearTimeout(timer));
+        };
+
+        function hospitalTagText(tags) {
+            return [tags.name, tags['name:en'], tags['healthcare:speciality'], tags.description].filter(Boolean).join(' ').toLowerCase();
+        }
+
+        function isBurnFacility(text) {
+            return /burn|plastic.?surgery|plastic surgery/i.test(text);
+        }
+
+        async function overpassHospitals(lat, lon) {
+            const query = `[out:json][timeout:25];(nwr["amenity"="hospital"](around:15000,${lat},${lon});nwr["amenity"="clinic"](around:15000,${lat},${lon});nwr["healthcare"="hospital"](around:15000,${lat},${lon}););out center tags 100;`;
+            const requests = OVERPASS_URLS.map(url => timedFetch(url, {
+                method: 'POST',
+                body: new URLSearchParams({ data: query }),
+                headers: { 'Accept': 'application/json' }
+            }, 12000).then(r => r.ok ? r.json() : Promise.reject(new Error(`Overpass ${r.status}`))));
+            try {
+                return await Promise.any(requests);
+            } catch (e) {
+                return { elements: [] };
+            }
+        }
+
+        async function nominatimHospitals(lat, lon) {
+            const delta = 0.27;
+            const params = new URLSearchParams({
+                q: 'hospital',
+                format: 'jsonv2',
+                limit: '40',
+                bounded: '1',
+                extratags: '1',
+                viewbox: `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`
+            });
+            const r = await timedFetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+                headers: { 'Accept': 'application/json', 'Accept-Language': D.set.lang === 'hi' ? 'hi' : 'en' }
+            }, 12000);
+            if (!r.ok) throw new Error(`Nominatim hospitals ${r.status}`);
+            return r.json();
+        }
+
+        function collectHospital(places, lat, lon, tags, plat, plon) {
+            if (!tags || !Number.isFinite(plat) || !Number.isFinite(plon)) return;
+            const name = tags.name || tags['name:en'];
+            if (!name) return;
+            const text = hospitalTagText({ ...tags, name });
+            if ((IRRELEVANT_FACILITY.test(text) && !isBurnFacility(text)) || (CAMPUS_PART.test(name) && !/hospital|medical/i.test(name))) return;
+            const kind = tags.amenity === 'hospital' || tags.healthcare === 'hospital' ? 'hospital' : 'clinic';
+            const key = `${name.toLowerCase()}|${plat.toFixed(2)}|${plon.toFixed(2)}`;
+            if (places.has(key)) return;
+            places.set(key, {
+                name,
+                kind,
+                lat: plat,
+                lon: plon,
+                distance_km: Math.round(haversineDistKm(lat, lon, plat, plon) * 10) / 10,
+                phone: tags.phone || tags['contact:phone'] || '',
+                burn_unit: isBurnFacility(text),
+                major: MAJOR_FACILITY.test(text) || tags.emergency === 'yes',
+                directions_url: `https://www.google.com/maps/dir/?api=1&destination=${plat},${plon}`
+            });
+        }
 
         function aiHospitalGo() {
             const L = D.set.lang === 'hi';
@@ -1512,9 +1586,9 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         
                         try {
                             // Reverse geocode via OpenStreetMap Nominatim for exact locality name
-                            const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+                            const rev = await timedFetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
                                 headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
-                            });
+                            }, 8000);
                             if (rev.ok) {
                                 const revData = await rev.json();
                                 const a = revData.address || {};
@@ -1567,9 +1641,9 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             // 1. If coordinates not provided, geocode placeName via OpenStreetMap Nominatim
             if ((!lat || !lon) && placeName) {
                 try {
-                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1&addressdetails=1&countrycodes=in`, {
+                    const geoRes = await timedFetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1&addressdetails=1&countrycodes=in`, {
                         headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
-                    });
+                    }, 8000);
                     if (geoRes.ok) {
                         const geoArr = await geoRes.json();
                         if (geoArr && geoArr.length) {
@@ -1593,36 +1667,18 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
             let foundHospitals = [];
 
-            // Query live hospitals in a small bounding box around the resolved location.
-            try {
-                const delta = 0.12;
-                const viewbox = `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
-                const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=hospital&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1`, {
-                    headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
-                });
-                if (osmRes.ok) {
-                    const osmData = await osmRes.json();
-                    if (osmData && osmData.length) {
-                        osmData.forEach(h => {
-                            const hLat = parseFloat(h.lat);
-                            const hLon = parseFloat(h.lon);
-                            const dKm = haversineDistKm(lat, lon, hLat, hLon);
-                            const hName = h.name || (h.display_name ? h.display_name.split(',')[0] : 'Hospital');
-                            const isBurn = /burn|plastic|trauma|emergency|medical college/i.test(h.display_name || hName);
-                            foundHospitals.push({
-                                name: hName,
-                                distance_km: Math.round(dKm * 10) / 10,
-                                burn_unit: isBurn,
-                                major: /medical college|civil|district|aiims|trauma/i.test(h.display_name || hName),
-                                lat: hLat,
-                                lon: hLon,
-                                directions_url: `https://www.google.com/maps/dir/?api=1&destination=${hLat},${hLon}`,
-                                phone: '112 / 108'
-                            });
-                        });
-                    }
-                }
-            } catch (err) {}
+            const places = new Map();
+            const [overpass, nominatim] = await Promise.all([overpassHospitals(lat, lon), nominatimHospitals(lat, lon).catch(() => [])]);
+            (overpass.elements || []).forEach(el => {
+                const center = el.center || {};
+                collectHospital(places, lat, lon, el.tags || {}, Number(el.lat ?? center.lat), Number(el.lon ?? center.lon));
+            });
+            (nominatim || []).forEach(item => {
+                const tags = { ...(item.extratags || {}), name: item.name || '' };
+                tags.amenity = item.type;
+                collectHospital(places, lat, lon, tags, Number(item.lat), Number(item.lon));
+            });
+            foundHospitals = [...places.values()];
 
             // Merge verified centers only when the resolved place belongs to that city.
             const pLower = (placeName || '').toLowerCase();
@@ -1630,28 +1686,23 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             if (cityKey && CITY_HOSPITALS[cityKey]) {
                 CITY_HOSPITALS[cityKey].forEach(ch => {
                     const dKm = haversineDistKm(lat, lon, ch.lat, ch.lon);
-                    // Avoid duplicate if already found
                     if (!foundHospitals.some(fh => fh.name.toLowerCase().includes(ch.name.toLowerCase().slice(0, 10)))) {
                         foundHospitals.push({
-                            name: ch.name,
-                            distance_km: Math.round(dKm * 10) / 10,
-                            burn_unit: ch.burn_unit,
-                            major: ch.major,
-                            phone: ch.phone,
-                            lat: ch.lat,
-                            lon: ch.lon,
+                            name: ch.name, kind: 'hospital', distance_km: Math.round(dKm * 10) / 10,
+                            burn_unit: ch.burn_unit, major: ch.major, phone: ch.phone,
+                            lat: ch.lat, lon: ch.lon,
                             directions_url: `https://www.google.com/maps/dir/?api=1&destination=${ch.lat},${ch.lon}`
                         });
                     }
                 });
             }
 
-            // Sort by proximity
-            foundHospitals.sort((a, b) => a.distance_km - b.distance_km);
-            const topHospitals = foundHospitals.slice(0, 5);
+            foundHospitals.sort((a, b) => (a.kind !== 'hospital') - (b.kind !== 'hospital') || a.distance_km - b.distance_km);
+            const topHospitals = foundHospitals.slice(0, 8);
+            const extraHospitals = foundHospitals.slice(8).filter(p => p.burn_unit || p.major).sort((a, b) => Number(!a.burn_unit) - Number(!b.burn_unit) || a.distance_km - b.distance_km).slice(0, 3);
 
             removeTyping();
-            renderHospitals(topHospitals, placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
+            renderHospitals(topHospitals.concat(extraHospitals), placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
         }
 
         function renderHospitals(places, where, title, emergencyLine) {
