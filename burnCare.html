@@ -430,88 +430,113 @@
 
         .assessment-report {
             font-size: 13px;
-            line-height: 1.55;
+            line-height: 1.6;
             color: var(--ink);
-            overflow-wrap: anywhere
+            overflow-wrap: anywhere;
+            background: #fff;
+            border: 1px solid #d6e0eb;
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 22px);
+            box-shadow: 0 3px 14px rgba(27, 55, 87, .06)
+        }
+
+        .assessment-report .report-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            padding-bottom: 13px;
+            border-bottom: 1px solid var(--line)
         }
 
         .assessment-report .report-title {
             color: var(--navy);
-            font-size: 16px;
+            font-size: 17px;
             font-weight: 700;
-            padding: 2px 0 10px;
-            margin-bottom: 10px;
-            border-bottom: 2px solid var(--blue)
+            line-height: 1.3
+        }
+
+        .assessment-report .report-subtitle {
+            color: var(--mut);
+            font-size: 11px;
+            margin-top: 3px
+        }
+
+        .assessment-report .report-kicker {
+            color: var(--blue);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            margin-bottom: 4px
+        }
+
+        .assessment-report .report-intro {
+            color: #536273;
+            font-style: italic;
+            margin: 12px 0 14px
+        }
+
+        .assessment-report .report-summary-band {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin: 0 0 18px;
+            padding: 10px;
+            background: #f5f8fc;
+            border: 1px solid #e0e8f1;
+            border-radius: 9px
+        }
+
+        .assessment-report .report-metric {
+            min-width: 0;
+            padding: 4px 9px;
+            border-left: 2px solid #8eabc8
+        }
+
+        .assessment-report .report-metric strong {
+            display: block;
+            color: var(--navy);
+            font-size: 17px;
+            line-height: 1.2
+        }
+
+        .assessment-report .report-metric span {
+            color: var(--mut);
+            font-size: 11px
         }
 
         .assessment-report .report-section {
             color: var(--navy);
-            font-weight: 700;
             font-size: 13px;
-            margin: 14px 0 6px;
-            padding: 7px 9px;
-            background: #edf4fb;
-            border-left: 4px solid var(--blue);
-            border-radius: 5px
-        }
-
-        .assessment-report .report-item {
-            padding: 7px 9px;
-            margin: 4px 0;
-            background: rgba(255,255,255,.62);
-            border-left: 3px solid #9db8d3;
-            border-radius: 4px
-        }
-
-        .assessment-report .report-summary {
-            padding: 8px 10px;
-            margin: 6px 0;
-            background: #f7fafc;
-            border: 1px solid var(--line);
-            border-radius: 6px
-        }
-
-        .assessment-report .report-highlight {
-            padding: 10px 11px;
-            margin: 8px 0;
-            background: #fff7df;
-            border: 1px solid #e8c86b;
-            border-left: 4px solid #d59b00;
-            border-radius: 7px;
-            font-weight: 600
-        }
-
-        .assessment-report .report-danger {
-            padding: 10px 11px;
-            margin: 8px 0;
-            background: #fff0f0;
-            border: 1px solid #e4a5a5;
-            border-left: 4px solid #c23b3b;
-            border-radius: 7px
-        }
-
-        .assessment-report .report-metric {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 6px;
-            padding: 7px 10px;
-            margin: 3px 4px 3px 0;
-            color: var(--navy);
-            background: #eaf5ef;
-            border: 1px solid #b8d9c4;
-            border-radius: 6px;
-            font-weight: 700
+            font-weight: 700;
+            margin: 17px 0 7px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--line)
         }
 
         .assessment-report .report-burn-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 8px;
-            padding: 8px 10px;
-            margin: 4px 0;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 6px
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #edf1f5
+        }
+
+        .assessment-report .report-table-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            padding: 0 0 5px;
+            color: var(--mut);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase
+        }
+
+        .assessment-report .report-burn-row:last-child {
+            border-bottom: 0
         }
 
         .assessment-report .report-burn-row small {
@@ -521,12 +546,64 @@
             margin-top: 2px
         }
 
+        .assessment-report .report-status {
+            padding: 11px 12px;
+            margin: 8px 0 12px;
+            background: #eef6f1;
+            border-left: 4px solid var(--ok);
+            border-radius: 6px;
+            font-weight: 600
+        }
+
+        .assessment-report .report-status.alert,
+        .assessment-report .report-danger {
+            background: #fff3f1;
+            border-left-color: var(--red);
+            color: #7a2525
+        }
+
+        .assessment-report .report-list {
+            margin: 0;
+            padding-left: 20px
+        }
+
+        .assessment-report .report-list li {
+            padding: 3px 0
+        }
+
         .assessment-report .report-note {
             color: var(--mut);
-            font-size: 12px;
-            margin-top: 12px;
-            padding-top: 8px;
+            font-size: 11px;
+            margin-top: 17px;
+            padding-top: 10px;
             border-top: 1px solid var(--line)
+        }
+
+        @media(max-width:600px) {
+            .assessment-report .report-summary-band {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 4px;
+                padding: 8px 5px
+            }
+
+            .assessment-report .report-metric {
+                padding-inline: 5px
+            }
+
+            .assessment-report .report-metric strong {
+                font-size: 15px
+            }
+
+            .assessment-report .report-burn-row {
+                grid-template-columns: 1fr;
+                gap: 3px
+            }
+        }
+
+        @media(max-width:380px) {
+            .assessment-report .report-summary-band {
+                grid-template-columns: 1fr
+            }
         }
 
         .assessment-report .report-gap {
@@ -1618,55 +1695,83 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         function formatAssessmentReport(text, meta) {
             const data = meta || {};
-            const lines = String(text || '').split(/\r?\n/);
-            const clean = value => String(value || '').replace(/^[\s🔥📏🏥⚡🧪⚠️💧✋🚑🩹]+/u, '').trim();
-            const plain = value => clean(String(value || '').replace(/<[^>]*>/g, ''));
-            const isTitle = (line, index) => index === 0 || /(?:burn clinical|clinical assessment|संपूर्ण क्लिनिकल|आकलन)/i.test(plain(line));
-            const isWarning = line => /(?:emergency|इमरजेंसी|urgent|तुरंत|112|108|red flag|महत्वपूर्ण लक्षण)/i.test(plain(line));
-            const isNote = line => /(?:disclaimer|automated|स्वचालित|आपातकालीन|emergency)/i.test(plain(line));
-            const isSection = line => {
-                const value = plain(line);
-                return /(?:burned areas|burn area|जले हुए|जला हिस्सा|palm rule|हथेली नियम|immediate|first aid|प्राथमिक उपचार|next steps|अगला कदम|electrical|chemical|विद्युत|रासायनिक|noticed|पहचाने गए)/i.test(value);
+            const lang = D.set.lang || 'en';
+            const labels = lang === 'hi'
+                ? { kicker: 'क्लिनिकल सारांश', preliminary: 'प्रारंभिक', areas: 'जले हुए हिस्से', tbsa: 'अनुमानित TBSA', reviewed: 'जाँचे गए हिस्से', superficial: 'सतही जलन', triage: 'क्लिनिकल ट्राइएज', findings: 'महत्वपूर्ण निष्कर्ष', safety: 'सुरक्षा और अगले कदम', area: 'हिस्सा', contribution: 'TBSA योगदान', noArea: 'कोई सत्यापित जला क्षेत्र उपलब्ध नहीं है।' }
+                : lang === 'hinglish'
+                    ? { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Jale hue hisse', tbsa: 'Andazan TBSA', reviewed: 'Reviewed areas', superficial: 'Sirf superficial', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety aur next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'Koi verified burned region available nahi hai.' }
+                    : { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Burned areas', tbsa: 'Estimated TBSA', reviewed: 'Areas reviewed', superficial: 'Superficial only', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety and next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'No verified burned region was returned.' };
+            const lines = String(text || '').split(/\r?\n/).map(x => String(x || '').trim()).filter(Boolean);
+            const decode = value => {
+                const node = document.createElement('textarea');
+                node.innerHTML = String(value || '');
+                return node.value;
             };
+            const plain = value => decode(String(value || '').replace(/<[^>]*>/g, '').replace(/^[\s🔥📏🏥⚡🧪⚠️💧✋🚑🩹]+/u, '').trim());
+            const lineAt = pattern => lines.find(line => pattern.test(plain(line))) || '';
+            const lineIndex = pattern => lines.findIndex(line => pattern.test(plain(line)));
+            const title = lines[0] || 'Burn assessment';
+            const titleText = plain(title).replace(/\s*\(Lund.*\)$/i, '');
+            const subtitle = plain((title.match(/\(([^)]+)\)/) || [])[1] || 'Lund & Browder');
             const rows = Array.isArray(data.rows) ? data.rows : [];
-            let rowsRendered = false;
-            const renderRows = () => {
-                if (!rows.length || rowsRendered) return '';
-                rowsRendered = true;
-                return rows.map(row => `
+            const levelLine = lineAt(/(?:EMERGENCY|इमरजेंसी|hospital|अस्पताल|home|घर पर|doctor|डॉक्टर)/i);
+            const levelIsAlert = /(?:emergency|इमरजेंसी|hospital|अस्पताल|112|108)/i.test(plain(levelLine));
+            const areaHeading = lineAt(/(?:burned areas|जले हुए हिस्से|जले हुए हिस्सों|jale hue hisse)/i);
+            const tbsaLine = lineAt(/(?:estimated tbsa|अनुमानित tbsa|andazan tbsa)/i);
+            const palmLine = lineAt(/(?:palm|हथेली|hatheli)/i);
+            const noticeIndex = lineIndex(/(?:noticed in photo|फ़ोटो में दिखा|photo mein dikha)/i);
+            const nextIndex = lineIndex(/(?:next:|आगे:|aage:)/i);
+            const disclaimer = lines.find(line => /(?:automated assistant|ऑटोमेटेड असिस्टेंट|automated preliminary|स्वचालित|approximate|मोटा-मोटा)/i.test(plain(line))) || '';
+            const reasons = Array.isArray(data.reasons) && data.reasons.length
+                ? data.reasons
+                : lines.filter(line => /^•/.test(line) && !(rows.length && /(?:of region|of body|of क्षेत्र|us hisse ka|उस हिस्से का)/i.test(plain(line))))
+                    .map(line => plain(line).replace(/^•\s*/, ''));
+            const redFlagLines = noticeIndex >= 0
+                ? lines.slice(noticeIndex + 1, nextIndex >= 0 ? nextIndex : lines.length)
+                    .filter(line => /^•/.test(line)).map(line => plain(line).replace(/^•\s*/, ''))
+                : [];
+            const redFlags = Array.isArray(data.red_flags) && data.red_flags.length ? data.red_flags : redFlagLines;
+            const renderRows = rows.length ? `<div class="report-table-head"><span>${labels.area}</span><span>${labels.contribution}</span></div>` + rows.map(row => `
                     <div class="report-burn-row">
                         <div><b>${esc(row.region_label || row.region || 'Burn area')}</b>
                             <small>${esc(row.depth_label || row.depth || 'Depth not specified')}</small>
                         </div>
-                        <strong>${Math.round(Number(row.fraction || 0) * 100)}% area · ${Number(row.pct || 0).toFixed(1)}% TBSA</strong>
-                    </div>`).join('');
-            };
-            const body = lines.map((raw, index) => {
-                const line = clean(raw);
-                if (!line) return '<div class="report-gap"></div>';
-                if (isTitle(line)) return `<div class="report-title">${line}</div>`;
-                if (rows.length && /(?:burned areas|burn area|जले हुए|जला हिस्सा)/i.test(plain(line))) {
-                    return `<div class="report-section">${line}</div>${renderRows()}`;
-                }
-                if (rows.length && /(?:of region|of body|of क्षेत्र)/i.test(plain(line)) && /\d/.test(plain(line))) {
-                    return '';
-                }
-                if (/^•\s*/.test(line)) {
-                    return `<div class="${isWarning(line) ? 'report-danger' : 'report-item'}">${line.replace(/^•\s*/, '')}</div>`;
-                }
-                if (/(?:TBSA|टीबीएसए)/i.test(plain(line))) {
-                    return `<div class="report-metric">${line}</div>`;
-                }
-                if (isWarning(line)) return `<div class="report-danger">${line}</div>`;
-                if (isSection(line)) return `<div class="report-section">${line}</div>`;
-                if (isNote(line)) return `<div class="report-note">${line}</div>`;
-                if (/<i>.*<\/i>/i.test(line)) return `<div class="report-summary">${line}</div>`;
-                return `<div class="report-summary">${line}</div>`;
-            }).join('');
-            const structuredRows = renderRows();
-            const structuredSummary = data.tbsa != null && !/(?:TBSA|टीबीएसए)/i.test(plain(text))
-                ? `<div class="report-metric">Estimated TBSA: ${Number(data.tbsa).toFixed(1)}%</div>` : '';
-            return `<div class="assessment-report">${body}${structuredRows}${structuredSummary}</div>`;
+                        <strong>${Math.round(Number(row.fraction || 0) * 100)}% <span style="font-weight:400;color:var(--mut)">area · ${Number(row.pct || 0).toFixed(1)}% TBSA</span></strong>
+                    </div>`).join('') : `<div class="report-note">${labels.noArea}</div>`;
+            const reasonList = reasons.map(reason => `<li>${esc(plain(reason).replace(/^•\s*/, ''))}</li>`).join('');
+            const redList = redFlags.map(flag => `<li>${esc(flag)}</li>`).join('');
+            const safetyLine = lineAt(/(?:electrical, chemical|बिजली, केमिकल|bijli, chemical)/i);
+            const nextLine = nextIndex >= 0 ? lines[nextIndex] : '';
+            const intro = lines.find((line, i) => i > 0 && /<i>.*<\/i>/i.test(line));
+            const total = data.tbsa != null ? Number(data.tbsa).toFixed(1) : (tbsaLine.match(/([\d.]+)\s*%/) || [,'—'])[1];
+            const areaCount = rows.length || lines.filter(line => /(?:of region|us hisse ka|उस हिस्से का)/i.test(plain(line))).length;
+            const statusLabel = levelLine ? plain(levelLine).replace(/^[^\w\u0900-\u097F]+/u, '') : 'Clinical triage guidance';
+            const palm = palmLine ? `<p class="report-note" style="margin-top:8px">${esc(plain(palmLine))}</p>` : '';
+            const safety = safetyLine ? `<p>${esc(plain(safetyLine))}</p>` : '';
+            const next = nextLine ? `<p>${esc(plain(nextLine))}</p>` : '';
+            const description = data.description || (intro ? plain(intro) : '');
+            return `<div class="assessment-report">
+                <div class="report-head">
+                    <div><div class="report-kicker">${labels.kicker}</div><div class="report-title">${esc(titleText)}</div><div class="report-subtitle">${esc(subtitle)}</div></div>
+                    <span class="tag">${labels.preliminary}</span>
+                </div>
+                ${description ? `<div class="report-intro">${esc(description)}</div>` : ''}
+                <div class="report-summary-band">
+                    <div class="report-metric"><strong>${esc(total)}%</strong><span>${labels.tbsa}</span></div>
+                    <div class="report-metric"><strong>${areaCount}</strong><span>${labels.reviewed}</span></div>
+                    <div class="report-metric"><strong>${data.superficial_only ? Number(data.superficial_only).toFixed(1) + '%' : '—'}</strong><span>${labels.superficial}</span></div>
+                </div>
+                <div class="report-section">${esc(plain(areaHeading) || labels.areas)}</div>
+                ${renderRows}
+                ${tbsaLine ? `<p class="report-note" style="margin-top:8px">${esc(plain(tbsaLine))}</p>` : ''}
+                ${palm}
+                <div class="report-section">${labels.triage}</div>
+                <div class="report-status${levelIsAlert ? ' alert' : ''}">${esc(statusLabel)}</div>
+                ${reasonList ? `<ul class="report-list">${reasonList}</ul>` : ''}
+                ${redList ? `<div class="report-section">${labels.findings}</div><ul class="report-list report-danger">${redList}</ul>` : ''}
+                ${safety || next ? `<div class="report-section">${labels.safety}</div>${safety}${next}` : ''}
+                ${disclaimer ? `<div class="report-note">${esc(plain(disclaimer))}</div>` : ''}
+            </div>`;
         }
 
         async function assessNow() {
