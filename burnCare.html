@@ -126,16 +126,26 @@
         }
 
         #v.view-ai #chat {
-            width: 100%;
-            max-width: 1280px;
-            margin-inline: auto
+            width: min(100%, 1120px);
+            height: clamp(340px, calc(100vh - 350px), 680px);
+            margin: 16px auto;
+            box-shadow: 0 2px 10px rgba(20, 45, 75, .04)
         }
 
         #v.view-ai .action-tray,
         #v.view-ai .chat-bar,
         #v.view-ai .warn {
-            max-width: 1280px;
+            width: min(100%, 1120px);
             margin-inline: auto
+        }
+
+        #v.view-ai .warn {
+            margin-top: 12px
+        }
+
+        #v.view-ai .action-tray {
+            margin-top: 12px;
+            margin-bottom: 12px
         }
 
         h1 {
@@ -795,7 +805,9 @@
             }
 
             #v.view-ai #chat {
-                height: min(60vh, 620px)
+                width: calc(100% - 12px);
+                height: clamp(300px, calc(100vh - 330px), 580px);
+                margin: 12px auto
             }
         }
 
@@ -855,8 +867,10 @@
             }
 
             #v.view-ai #chat {
-                height: min(57vh, 520px);
-                min-height: 260px;
+                width: calc(100% - 6px);
+                height: clamp(280px, calc(100vh - 350px), 520px);
+                min-height: 280px;
+                margin: 10px auto;
                 padding: 9px
             }
 
