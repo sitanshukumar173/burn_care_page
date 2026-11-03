@@ -772,7 +772,7 @@
             ai() {
                 const L = D.set.lang == 'hi'; 
                 return head('BurnCare AI', (L ? 'लाइव AI — CSJMU BurnCare Saathi' : 'Live AI — CSJMU BurnCare Saathi'), 
-                    `<button class="s" onclick="chat=[];hist=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
+                    `<button class="s" onclick="chat=[];hist=[];chatWelcomeRendered=false;chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
                     `<div class="warn"><b>${L ? 'क्लीनिकल प्रोटोटाइप' : 'Clinical Prototype'}</b> — ${L ? 'जलने की चोट के प्रश्न, आपातकालीन ट्राइएज और फ़ोटो विश्लेषण CSJMU BurnCare Saathi द्वारा संचालित हैं। आपातकाल में 112/108 डायल करें।' : 'Live burn injury guidance, Lund &amp; Browder TBSA analysis, and hospital triage. In an emergency, dial 112/108.'}</div>` +
                     `<div id="chat"></div>` +
                     `<div class="action-tray">` +
@@ -1086,7 +1086,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             { value: 'adult', label: 'Adult (18+)' }
         ];
 
-        let chat = [], hist = [], stringsP = null, caseBurns = [], caseCirc = false, caseAge = null, caseDesc = '', caseRed = [], lastTbsa = null;
+        let chat = [], hist = [], stringsP = null, chatWelcomeRendered = false, caseBurns = [], caseCirc = false, caseAge = null, caseDesc = '', caseRed = [], lastTbsa = null;
         const S = () => stringsP || {};
         const API_LANG = () => (D.set.lang === 'hi' ? 'hi' : (D.set.lang === 'hinglish' ? 'hinglish' : 'en'));
 
@@ -1134,7 +1134,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                     </div>`;
             }
             c.scrollTop = c.scrollHeight;
-            loadStrings().then(j => { if (j && !chat.length && cur == 'ai') chatInit(); });
+            if (!chat.length && !chatWelcomeRendered) {
+                chatWelcomeRendered = true;
+                loadStrings().then(j => {
+                    if (j && cur == 'ai' && !chat.length) chatInit();
+                });
+            }
         }
 
         function pushBot(x, o) { 
@@ -1214,6 +1219,14 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         function aiPhotoSend(inp) {
             const f = inp.files[0]; if (!f) return; inp.value = '';
+            if (!f.type || !f.type.startsWith('image/')) {
+                toast(D.set.lang === 'hi' ? 'कृपया इमेज फ़ाइल चुनें' : 'Please choose an image file', 1);
+                return;
+            }
+            if (f.size > 10 * 1024 * 1024) {
+                toast(D.set.lang === 'hi' ? 'इमेज 10 MB से छोटी होनी चाहिए' : 'Image must be smaller than 10 MB', 1);
+                return;
+            }
             const cap = (($('#ci') || {}).value || '').trim(); if ($('#ci')) $('#ci').value = '';
             
             const rd = new FileReader();
@@ -1229,6 +1242,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 chatInit();
                 
                 const img = new Image();
+                img.onerror = () => pushBot(D.set.lang === 'hi' ? 'इमेज पढ़ी नहीं जा सकी। कृपया दूसरी इमेज भेजें।' : 'The image could not be read. Please choose another image.');
                 img.onload = () => { 
                     const sc = Math.min(1, 1200 / Math.max(img.width, img.height));
                     const c = document.createElement('canvas'); 
@@ -1239,12 +1253,13 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 };
                 img.src = dataUrl;
             };
+            rd.onerror = () => pushBot(D.set.lang === 'hi' ? 'इमेज पढ़ी नहीं जा सकी। कृपया दोबारा प्रयास करें।' : 'The image could not be read. Please try again.');
             rd.readAsDataURL(f);
         }
 
         async function photoGo(blob, cap) {
             const L = D.set.lang === 'hi';
-            showTyping(L ? 'फ़ोटो का क्लिनिकल विश्लेषण (Gemini Vision) हो रहा है…' : 'Analyzing wound image with Gemini Vision…');
+            showTyping(L ? 'इमेज का विश्लेषण हो रहा है…' : 'Analyzing image…');
             
             try {
                 const fd = new FormData(); 
@@ -1252,8 +1267,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 fd.append('caption', cap); 
                 fd.append('lang', API_LANG());
                 
-                const r = await timedFetch((API ? API : '') + '/api/photo', { method: 'POST', body: fd }, 45000); 
-                if (!r.ok) throw new Error('Photo API error'); 
+                const r = await timedFetch((API ? API : '') + '/api/photo', { method: 'POST', body: fd }, 45000);
+                if (!r.ok) {
+                    const error = new Error('Photo API error');
+                    error.status = r.status;
+                    throw error;
+                }
                 const d = await r.json();
                 removeTyping();
                 
@@ -1276,11 +1295,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                     pushBot('<b>⚠️ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + d.red_flags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
                 }
                 if (!caseAge) askAge(); else assessNow();
-            } catch (e) { 
+            } catch (e) {
                 removeTyping();
-                pushBot(L
-                    ? 'फ़ोटो का विश्लेषण पूरा नहीं हो सका। कृपया साफ़, अच्छी रोशनी वाली फ़ोटो दोबारा भेजें।'
-                    : 'Photo analysis could not be completed. Please send the image again with good lighting and the injured area clearly visible.');
+                const serviceDown = e && (e.status === 502 || e.status === 503 || e.status === 504 || e.name === 'AbortError' || e.name === 'TimeoutError');
+                pushBot(serviceDown
+                    ? (L ? 'इमेज विश्लेषण सेवा अभी उपलब्ध नहीं है। कृपया कुछ देर बाद दोबारा प्रयास करें।' : 'Image analysis service is temporarily unavailable. Please try again shortly.')
+                    : (L ? 'इमेज का विश्लेषण पूरा नहीं हो सका। कृपया दोबारा प्रयास करें।' : 'Image analysis could not be completed. Please try again.'));
             }
         }
 
