@@ -1504,6 +1504,8 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             'https://overpass.kumi.systems/api/interpreter',
             'https://overpass.private.coffee/api/interpreter'
         ];
+        const hospitalCache = new Map();
+        const placeCache = new Map();
         const IRRELEVANT_FACILITY = /\b(eye|netra|nethralaya|ophthalm|dental|dentist|urology|fertility|diagnostic|pathology|laboratory|veterinary|animal|psychiatr|rehab|cancer|oncology)\b/i;
         const CAMPUS_PART = /\b(block|wing|ward|building|gate)\b/i;
         const MAJOR_FACILITY = /\b(aiims|medical college|medical sciences|government|govt|sadar|district hospital|general hospital|civil hospital|referral hospital|pmch|igims|nmch)\b/i;
@@ -1640,7 +1642,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
             // 1. If coordinates not provided, geocode placeName via OpenStreetMap Nominatim
             if ((!lat || !lon) && placeName) {
-                try {
+                const cachedPlace = placeCache.get(placeName.trim().toLowerCase());
+                if (cachedPlace) {
+                    lat = cachedPlace.lat;
+                    lon = cachedPlace.lon;
+                    placeName = cachedPlace.name;
+                } else try {
                     const geoRes = await timedFetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1&addressdetails=1&countrycodes=in`, {
                         headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
                     }, 8000);
@@ -1652,6 +1659,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                             if (geoArr[0].display_name) {
                                 placeName = geoArr[0].display_name.split(',').slice(0, 3).join(',').trim();
                             }
+                            placeCache.set(q.place.trim().toLowerCase(), { lat, lon, name: placeName });
                         }
                     }
                 } catch (e) {}
@@ -1665,19 +1673,32 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 return;
             }
 
+            const cacheKey = `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+            const cachedHospitals = hospitalCache.get(cacheKey);
+            if (cachedHospitals) {
+                removeTyping();
+                renderHospitals(cachedHospitals, placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
+                return;
+            }
+
             let foundHospitals = [];
 
             const places = new Map();
-            const [overpass, nominatim] = await Promise.all([overpassHospitals(lat, lon), nominatimHospitals(lat, lon).catch(() => [])]);
-            (overpass.elements || []).forEach(el => {
-                const center = el.center || {};
-                collectHospital(places, lat, lon, el.tags || {}, Number(el.lat ?? center.lat), Number(el.lon ?? center.lon));
-            });
+            // Nominatim is fast enough for the first response. Overpass is retained
+            // as a fallback because public Overpass mirrors can take several seconds.
+            const nominatim = await nominatimHospitals(lat, lon).catch(() => []);
             (nominatim || []).forEach(item => {
                 const tags = { ...(item.extratags || {}), name: item.name || '' };
                 tags.amenity = item.type;
                 collectHospital(places, lat, lon, tags, Number(item.lat), Number(item.lon));
             });
+            if (!places.size) {
+                const overpass = await overpassHospitals(lat, lon);
+                (overpass.elements || []).forEach(el => {
+                    const center = el.center || {};
+                    collectHospital(places, lat, lon, el.tags || {}, Number(el.lat ?? center.lat), Number(el.lon ?? center.lon));
+                });
+            }
             foundHospitals = [...places.values()];
 
             // Merge verified centers only when the resolved place belongs to that city.
@@ -1700,9 +1721,11 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             foundHospitals.sort((a, b) => (a.kind !== 'hospital') - (b.kind !== 'hospital') || a.distance_km - b.distance_km);
             const topHospitals = foundHospitals.slice(0, 8);
             const extraHospitals = foundHospitals.slice(8).filter(p => p.burn_unit || p.major).sort((a, b) => Number(!a.burn_unit) - Number(!b.burn_unit) || a.distance_km - b.distance_km).slice(0, 3);
+            const results = topHospitals.concat(extraHospitals);
+            hospitalCache.set(cacheKey, results);
 
             removeTyping();
-            renderHospitals(topHospitals.concat(extraHospitals), placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
+            renderHospitals(results, placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
         }
 
         function renderHospitals(places, where, title, emergencyLine) {
