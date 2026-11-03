@@ -1244,7 +1244,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 fd.append('caption', cap); 
                 fd.append('lang', API_LANG());
                 
-                const r = await fetch((API ? API : '') + '/api/photo', { method: 'POST', body: fd }); 
+                const r = await timedFetch((API ? API : '') + '/api/photo', { method: 'POST', body: fd }, 45000); 
                 if (!r.ok) throw new Error('Photo API error'); 
                 const d = await r.json();
                 removeTyping();
@@ -1798,6 +1798,33 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             pushBot(out, { html: 1 });
         }
 
+        function parseHospitalQuery(text) {
+            const facility = /\b(hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|medical\s+cent(?:re|er)|aspatal|aspataal|haspatal)\b|अस्पताल|हॉस्पिटल|दवाखाना/i;
+            const locator = /\b(near|nearby|nearest|close|closest|around|find|where|location|address|list|show|in|at)\b|पास|नज़दीक|नजदीक|कहाँ|कहां|ढूंढ|बताओ/i;
+            if (!facility.test(text) || !locator.test(text)) return { requested: false, place: '' };
+            const selfLocation = /\b(near\s+me|nearby|my\s+location|current\s+location|here)\b|पास\s*के|नज़दीकी/i.test(text);
+            if (selfLocation && !/\b(?:in|at|near)\s+[a-z]/i.test(text)) {
+                const candidate = text
+                    .replace(/\b(?:near\s+me|nearby|my\s+location|current\s+location|here|hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|find|show|list)\b/gi, '')
+                    .replace(/पास\s*के|नज़दीकी|अस्पताल|हॉस्पिटल|दवाखाना/gi, '')
+                    .replace(/[?!.,]+$/g, '').replace(/\s+/g, ' ').trim();
+                return { requested: true, place: candidate };
+            }
+            let place = '';
+            const after = text.match(/\b(?:near|in|at|around)\s+(.+?)(?:\s+(?:for|please|pls|plz))?$/i);
+            if (after) place = after[1].trim();
+            if (!place) {
+                const before = text.match(/^(.+?)\s+(?:mein|me|mai|ke\s+paas|ke\s+nazdik|के\s+पास|में)\s+/i);
+                if (before) place = before[1].trim();
+            }
+            place = place
+                .replace(/\b(?:find|show|list|hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|please|pls|plz)\b/gi, '')
+                .replace(/[?!.,]+$/g, '').replace(/\s+/g, ' ').trim();
+            if (!place || /^(me|my|here|this|the|nearby|पास|नज़दीकी)$/i.test(place)) return { requested: true, place: '' };
+            return { requested: true, place };
+        }
+
+        let chatRequestActive = false;
         async function ask(q) {
             const inp = $('#ci'); 
             if (!q && inp) { q = inp.value; inp.value = ''; }
@@ -1811,16 +1838,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const qLower = q.toLowerCase();
 
             // 1. SMART QUERY INTERCEPTION: Detect Hospital Search Queries
-            const hospRegex = /(hospital|hospitals|hpoospital|hpoospitals|hostipal|hosptial|clinic|clinics|doctor|doctors|burn center|burn unit|अस्पताल|दवाखाना|डॉक्टर|nearby|near me|paas ke|paas me|kahan hai)/i;
-            if (hospRegex.test(qLower)) {
-                let cleanPlace = q
-                    .replace(/nearby|near me|\bnear\b|paas ke|paas me|kahan hai|khoje|khojo|search|dikhaye|dikhao|find|list|show me|batao|please|plz/gi, '')
-                    .replace(/hospitals?|hpoospitals?|hostipals?|clinics?|doctors?|burn centers?|burn units?|अस्पताल|दवाखाना/gi, '')
-                    .trim();
-                cleanPlace = cleanPlace.replace(/\bkanpy\b/gi, 'kanpur').replace(/\s+/g, ' ').trim();
-                
-                if (cleanPlace.length >= 2) {
-                    hospLookup({ place: cleanPlace });
+            const hospitalQuery = parseHospitalQuery(q);
+            if (hospitalQuery.requested) {
+                if (hospitalQuery.place.length >= 2) {
+                    hospLookup({ place: hospitalQuery.place });
                     return;
                 } else {
                     aiHospitalGo();
@@ -1831,12 +1852,14 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             // 2. Normal Burn Q&A
             showTyping(L ? 'CSJMU AI उत्तर तैयार कर रहा है…' : 'CSJMU AI is preparing answer…');
             
+            if (chatRequestActive) return;
+            chatRequestActive = true;
             try {
-                const r = await fetch((API ? API : '') + '/api/chat', { 
+                const r = await timedFetch((API ? API : '') + '/api/chat', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ message: q, history: hist, lang: API_LANG() }) 
-                });
+                }, 45000);
                 if (!r.ok) throw new Error('API error');
                 const d = await r.json();
                 hist.push(['user', q], ['model', d.answer]); 
@@ -1870,6 +1893,8 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 }
                 hist.push(['user', q], ['model', ans]);
                 await streamBotMessage(ans);
+            } finally {
+                chatRequestActive = false;
             }
         }
         /* ===== 10. INIT ===== */
