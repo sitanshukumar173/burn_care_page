@@ -110,7 +110,7 @@
         }
 
         section {
-            padding: 22px;
+            padding: 18px clamp(14px, 2.5vw, 28px);
             max-width: 1200px
         }
 
@@ -333,21 +333,25 @@
         }
 
         #chat {
-            height: 420px;
+            height: min(58vh, 560px);
+            min-height: 300px;
             overflow-y: auto;
             background: #fff;
             border: 1px solid var(--line);
             border-radius: 8px;
-            padding: 14px
+            padding: clamp(10px, 2vw, 18px);
+            scroll-behavior: smooth
         }
 
         .msg {
-            max-width: 82%;
-            padding: 9px 13px;
+            max-width: min(88%, 760px);
+            padding: 10px 13px;
             border-radius: 12px;
             margin: 8px 0;
             white-space: pre-wrap;
-            word-break: break-word
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.55
         }
 
         .msg.u {
@@ -376,7 +380,33 @@
 
         .msg.b {
             background: #eef3f9;
-            border-bottom-left-radius: 2px
+            border-bottom-left-radius: 2px;
+            max-width: min(94%, 860px)
+        }
+
+        .msg.b img,
+        .msg.b table,
+        .msg.b .action-tray {
+            max-width: 100%
+        }
+
+        .msg.b a {
+            overflow-wrap: anywhere
+        }
+
+        .bot-mark {
+            width: 36px;
+            height: 36px;
+            margin: 0 auto 8px;
+            display: grid;
+            place-items: center;
+            border: 1px solid #b9cde2;
+            border-radius: 9px;
+            background: #f3f7fb;
+            color: var(--blue);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px
         }
 
         .msg.em {
@@ -438,7 +468,11 @@
             display: flex;
             gap: 8px;
             align-items: center;
-            margin-top: 10px
+            margin-top: 10px;
+            position: sticky;
+            bottom: 0;
+            background: var(--bg);
+            padding-top: 2px
         }
 
         .action-tray {
@@ -588,6 +622,40 @@
             #burger {
                 display: block
             }
+
+            section {
+                padding: 14px 10px
+            }
+
+            header {
+                padding: 8px 12px;
+                gap: 8px
+            }
+
+            header .pill {
+                max-width: 42vw;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap
+            }
+
+            #chat {
+                height: 52vh;
+                min-height: 280px
+            }
+
+            .msg,
+            .msg.b {
+                max-width: 96%
+            }
+
+            .chat-bar {
+                align-items: stretch
+            }
+
+            .chat-bar input {
+                min-width: 0
+            }
         }
 
         @media print {
@@ -622,9 +690,9 @@
     <div id="app">
         <aside id="nav"></aside>
         <div class="main">
-            <header><button id="burger" onclick="nav.classList.toggle('open')" aria-label="Menu">☰</button><b
+            <header><button id="burger" onclick="nav.classList.toggle('open')" aria-label="Menu">Menu</button><b
                     style="font-size:21px;color:var(--navy);letter-spacing:.3px">BurnCare</b><span class="pill"
-                    id="hn"></span><span class="sp"></span><button class="sm s" onclick="toggleLanguage()" id="langBtn" style="font-weight:600;padding:4px 10px;cursor:pointer">🌐 English</button><span class="pill" title="Demo notifications">🔔 <span
+                    id="hn"></span><span class="sp"></span><button class="sm s" onclick="toggleLanguage()" id="langBtn" style="font-weight:600;padding:4px 10px;cursor:pointer">English</button><span class="pill" title="Demo notifications"><span
                         id="nn"></span> demo alerts</span><span class="pill" id="un"></span><button id="ib" class="sm"
                     style="display:none" onclick="ip.prompt()">Install app</button></header>
             <section id="v"></section>
@@ -679,8 +747,8 @@
         function draw() {
             $('#nav').innerHTML = NAV.map(n => `<a tabindex="0" class="${n[0] == cur ? 'on' : ''}" onclick="go('${n[0]}')" onkeydown="if(event.key=='Enter')go('${n[0]}')">${n[1]}</a>`).join('');
             $('#hn').textContent = D.set.hosp; $('#un').textContent = D.set.user; $('#nn').textContent = D.fus.filter(f => f.status == 'Pending' && f.due < T).length;
-            const langLabels = { en: '🌐 English', hi: '🌐 हिन्दी', hinglish: '🌐 Hinglish' };
-            if ($('#langBtn')) $('#langBtn').textContent = langLabels[D.set.lang] || '🌐 ' + D.set.lang;
+            const langLabels = { en: 'English', hi: 'हिन्दी', hinglish: 'Hinglish' };
+            if ($('#langBtn')) $('#langBtn').textContent = langLabels[D.set.lang] || D.set.lang;
             $('#v').innerHTML = V[cur](); if (cur == 'ai') chatInit(); if (cur == 'bm') { bmInit(); tbInit() }
         }
         const head = (t, s, b) => `<div class="row"><div><h1>${t}</h1><div class="sub">${s || ''}</div></div>${b || ''}</div>`;
@@ -700,23 +768,22 @@
             ai() {
                 const L = D.set.lang == 'hi'; 
                 return head('BurnCare AI', (L ? 'लाइव AI — CSJMU BurnCare Saathi' : 'Live AI — CSJMU BurnCare Saathi'), 
-                    `<button class="s" onclick="D.set.lang=D.set.lang=='en'?'hi':(D.set.lang=='hi'?'hinglish':'en');save();stringsP=null;hist=[];draw()">🌐 ${D.set.lang=='en'?'हिन्दी':(D.set.lang=='hi'?'Hinglish':'English')}</button>` +
                     `<button class="s" onclick="chat=[];hist=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
                     `<div class="warn"><b>${L ? 'क्लीनिकल प्रोटोटाइप' : 'Clinical Prototype'}</b> — ${L ? 'जलने की चोट के प्रश्न, आपातकालीन ट्राइएज और फ़ोटो विश्लेषण CSJMU BurnCare Saathi द्वारा संचालित हैं। आपातकाल में 112/108 डायल करें।' : 'Live burn injury guidance, Lund &amp; Browder TBSA analysis, and hospital triage. In an emergency, dial 112/108.'}</div>` +
                     `<div id="chat"></div>` +
                     `<div class="action-tray">` +
-                        `<span class="chip" onclick="aiHospitalGo()">📍 ${L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals'}</span>` +
-                        `<span class="chip" onclick="triggerPhotoUpload()">📤 ${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span>` +
-                        `<span class="chip" onclick="showFormulaDocs()">💧 ${L ? 'पार्कस्टैंड / % फ़ॉर्मूला' : 'Parkland & % Formula'}</span>` +
-                        `<span class="chip" onclick="aiText('first_aid')">🩹 ${L ? 'प्राथमिक उपचार' : 'First Aid'}</span>` +
-                        `<span class="chip" onclick="aiText('prevention')">🛡️ ${L ? 'बचाव' : 'Prevention'}</span>` +
-                        `<span class="chip" onclick="resetCase()">🔄 ${L ? 'नया केस' : 'New Case'}</span>` +
+                        `<span class="chip" onclick="aiHospitalGo()">${L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals'}</span>` +
+                        `<span class="chip" onclick="triggerPhotoUpload()">${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span>` +
+                        `<span class="chip" onclick="showFormulaDocs()">${L ? 'पार्कस्टैंड / % फ़ॉर्मूला' : 'Parkland & % Formula'}</span>` +
+                        `<span class="chip" onclick="aiText('first_aid')">${L ? 'प्राथमिक उपचार' : 'First Aid'}</span>` +
+                        `<span class="chip" onclick="aiText('prevention')">${L ? 'बचाव' : 'Prevention'}</span>` +
+                        `<span class="chip" onclick="resetCase()">${L ? 'नया केस' : 'New Case'}</span>` +
                     `</div>` +
                     `<div class="chat-bar">` +
-                        `<button class="s" onclick="triggerPhotoUpload()" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:8px 12px;font-weight:600">📤 <span>${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span></button>` +
+                        `<button class="s" onclick="triggerPhotoUpload()" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:8px 12px;font-weight:600"><span>${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span></button>` +
                         `<input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें, अस्पताल खोजें या फ़ोटो भेजें…' : 'Ask any burn injury question, search nearby hospitals, or upload photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">` +
                         `<button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>` +
-                    `</div>`` +
+                    `</div>` +
                     `<input type="file" id="aiPh" accept="image/*" style="display:none" onchange="aiPhotoSend(this)">`
             },
             pt() {
@@ -1056,7 +1123,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             } else {
                 c.innerHTML = `
                     <div style="color:var(--mut);text-align:center;margin-top:60px;padding:20px">
-                        <div style="font-size:36px;margin-bottom:8px">🩺</div>
+                        <div class="bot-mark" aria-hidden="true">BC</div>
                         <b style="font-size:16px;color:var(--navy)">${L ? 'CSJMU बर्नकेयर साथी (AI बॉट)' : 'CSJMU BurnCare Saathi AI'}</b>
                         <p style="font-size:13px;max-width:400px;margin:8px auto;line-height:1.5">${L ? 'जलने की चोट के बारे में कोई भी प्रश्न पूछें, घाव की फ़ोटो भेजें, या नज़दीकी अस्पताल व बर्न सेंटर खोजें।' : 'Instant burn first aid, wound photograph assessment (%TBSA), Parkland fluid calculations, and emergency hospital triage.'}</p>
                     </div>`;
@@ -1128,7 +1195,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         function resetCase() { 
             caseBurns = []; caseCirc = false; caseAge = null; caseDesc = ''; caseRed = []; lastTbsa = null; 
             const L = D.set.lang === 'hi';
-            pushBot(L ? '🔄 नया केस शुरू हुआ। पिछले केस का डेटा साफ़ कर दिया गया है।' : '🔄 New case started. Previous case data cleared.'); 
+            pushBot(L ? 'नया केस शुरू हुआ। पिछले केस का डेटा साफ़ कर दिया गया है।' : 'New case started. Previous case data cleared.'); 
         }
 
         function aiPhotoAgain() { triggerPhotoUpload(); }
@@ -1151,12 +1218,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 
                 const img = new Image();
                 img.onload = () => { 
-                    const sc = Math.min(1, 1200 / Math.max(img.width, img.height)); 
+                    const sc = Math.min(1, 900 / Math.max(img.width, img.height)); 
                     const c = document.createElement('canvas'); 
                     c.width = Math.max(1, Math.round(img.width * sc)); 
                     c.height = Math.max(1, Math.round(img.height * sc)); 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    c.toBlob(b => photoGo(b || f, cap), 'image/jpeg', 0.85); 
+                    c.toBlob(b => photoGo(b || f, cap), 'image/jpeg', 0.72); 
                 };
                 img.src = dataUrl;
             };
@@ -1383,10 +1450,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const L = D.set.lang === 'hi';
             pushBot(
                 '<div class="action-tray" style="margin-top:6px">' +
-                    '<span class="chip" onclick="aiHospitalGo()">📍 ' + (L ? 'नज़दीकी अस्पताल खोजें' : 'Find Nearby Hospitals') + '</span>' +
-                    `<span class="chip" onclick="calcParklandModal()">💧 Parkland (${tbsa}%)</span>` +
+                    '<span class="chip" onclick="aiHospitalGo()">' + (L ? 'नज़दीकी अस्पताल खोजें' : 'Find Nearby Hospitals') + '</span>' +
+                    `<span class="chip" onclick="calcParklandModal()">Parkland (${tbsa}%)</span>` +
                     '<span class="chip" onclick="aiPhotoAgain()">➕ ' + (L ? 'अन्य क्षेत्र जोड़ें' : 'Add another burn area') + '</span>' +
-                    '<span class="chip" onclick="resetCase()">🔄 ' + (L ? 'नया केस' : 'New case') + '</span>' +
+                    '<span class="chip" onclick="resetCase()">' + (L ? 'नया केस' : 'New case') + '</span>' +
                 '</div>', 
                 { html: 1 }
             );
@@ -1432,7 +1499,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         function aiHospitalGo() {
             const L = D.set.lang === 'hi';
             if (navigator.geolocation && navigator.geolocation.getCurrentPosition) {
-                showTyping(L ? 'सटीक GPS लोकेशन प्राप्त की जा रही है…' : 'Detecting high-accuracy GPS location…');
+                showTyping(L ? 'सटीक GPS लोकेशन प्राप्त की जा रही है…' : 'Detecting your location…');
                 navigator.geolocation.getCurrentPosition(
                     async p => { 
                         const lat = p.coords.latitude;
@@ -1442,7 +1509,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         try {
                             // Reverse geocode via OpenStreetMap Nominatim for exact locality name
                             const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
-                                headers: { 'Accept': 'application/json' }
+                                headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
                             });
                             if (rev.ok) {
                                 const revData = await rev.json();
@@ -1454,7 +1521,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
                         removeTyping();
                         const displayPlace = areaName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-                        chat.push({ c: 'u', x: `📍 ${L ? 'मेरी लोकेशन' : 'Shared location'}: ${displayPlace}` });
+                        chat.push({ c: 'u', x: `${L ? 'मेरी लोकेशन' : 'Shared location'}: ${displayPlace}` });
                         chatInit();
                         hospLookup({ lat, lon, place: areaName || 'Kanpur' }); 
                     }, 
@@ -1462,7 +1529,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         removeTyping();
                         hospCityFallback(); 
                     }, 
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
                 );
             } else {
                 hospCityFallback();
@@ -1472,14 +1539,14 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         function hospCityFallback() {
             const L = D.set.lang === 'hi';
             pushBot(
-                '<b>📍 ' + (L ? 'नज़दीकी अस्पताल व बर्न सेंटर खोजें' : 'Find Nearby Hospitals & Burn Centers') + '</b><br>' +
+                '<b>' + (L ? 'नज़दीकी अस्पताल व बर्न सेंटर खोजें' : 'Find Nearby Hospitals & Burn Centers') + '</b><br>' +
                 (L ? 'अपने शहर, क्षेत्र या इलाके का नाम लिखें (उदा. Kalyanpur, Kanpur Nagar):' : 'Enter your city, area, or locality name (e.g. Kalyanpur, Kanpur):') + 
                 '<div class="chat-bar" style="margin-top:8px">' +
                     '<input id="hcity" placeholder="e.g. Kalyanpur, Kanpur, Lucknow, Delhi" onkeydown="if(event.key==&quot;Enter&quot;)hospLookup({ place: this.value })" style="flex:1">' +
                     '<button class="sm" onclick="hospLookup({ place: document.getElementById(&quot;hcity&quot;).value })">' + (L ? 'खोजें' : 'Search') + '</button>' +
                 '</div>' +
                 '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">' +
-                    ['Kalyanpur Kanpur', 'Kanpur', 'Lucknow', 'Delhi', 'Patna'].map(c => `<button class="s sm" onclick="hospLookup({ place: '${c}' })">📍 ${c}</button>`).join('') +
+                    ['Kalyanpur Kanpur', 'Kanpur', 'Lucknow', 'Delhi', 'Patna'].map(c => `<button class="s sm" onclick="hospLookup({ place: '${c}' })">${c}</button>`).join('') +
                 '</div>',
                 { html: 1 }
             );
@@ -1583,7 +1650,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         function renderHospitals(places, where, title, emergencyLine) {
             const L = D.set.lang === 'hi';
             emergencyLine = emergencyLine || '112 / 108';
-            let out = `<b>📍 ${title || (L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals')}</b> (${esc(where || (L ? 'आपका क्षेत्र' : 'Your Location'))})<br><br>`;
+            let out = `<b>${title || (L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals')}</b> (${esc(where || (L ? 'आपका क्षेत्र' : 'Your Location'))})<br><br>`;
             
             if (!places || !places.length) {
                 out += (L ? 'इस क्षेत्र में कोई अस्पताल नहीं मिला। कृपया आपातकालीन नंबर पर संपर्क करें।' : 'No verified hospitals found in this vicinity.');
@@ -1593,26 +1660,26 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         ? `<span style="background:#dc3545;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700">🔥 ${L ? 'विशेष बर्न यूनिट' : 'Specialized Burn Unit'}</span>` 
                         : (p.major ? `<span style="background:#0d6efd;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600">🏥 ${L ? '24x7 आपातकालीन' : '24x7 Emergency'}</span>` : '');
                     
-                    const phoneHtml = p.phone ? `<a href="tel:${p.phone.replace(/[^0-9]/g, '')}" style="color:var(--navy);font-weight:600;text-decoration:none;margin-right:8px">📞 ${esc(p.phone)}</a>` : '';
+                    const phoneHtml = p.phone ? `<a href="tel:${p.phone.replace(/[^0-9]/g, '')}" style="color:var(--navy);font-weight:600;text-decoration:none;margin-right:8px">${esc(p.phone)}</a>` : '';
                     const dirUrl = p.directions_url || (p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + (where || ''))}`);
 
                     out += `<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
                         <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:4px">${idx + 1}. ${esc(p.name)}</div>
                         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:12px">
-                            <span style="font-weight:600;color:#28a745">📍 ${p.distance_km} km away</span>
+                            <span style="font-weight:600;color:#28a745">${p.distance_km} km away</span>
                             ${tag}
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;font-size:12px">
                             ${phoneHtml}
                             <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" style="background:var(--blue);color:#fff;padding:4px 10px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px">
-                                🗺️ ${L ? 'रास्ता देखें (Maps)' : 'Directions'}
+                                ${L ? 'रास्ता देखें (Maps)' : 'Directions'}
                             </a>
                         </div>
                     </div>`;
                 });
             }
             
-            out += `<div style="font-size:12px;color:var(--mut);margin-top:6px">🚨 ${L ? 'गंभीर आपातकाल में तुरंत डायल करें:' : 'Critical emergency helpline:'} <b style="color:#dc3545">${emergencyLine}</b></div>`;
+            out += `<div style="font-size:12px;color:var(--mut);margin-top:6px">${L ? 'गंभीर आपातकाल में तुरंत डायल करें:' : 'Critical emergency helpline:'} <b style="color:#dc3545">${emergencyLine}</b></div>`;
             pushBot(out, { html: 1 });
         }
 
