@@ -781,6 +781,7 @@
                         `<span class="chip" onclick="showFormulaDocs()">${L ? 'पार्कस्टैंड / % फ़ॉर्मूला' : 'Parkland & % Formula'}</span>` +
                         `<span class="chip" onclick="aiText('first_aid')">${L ? 'प्राथमिक उपचार' : 'First Aid'}</span>` +
                         `<span class="chip" onclick="aiText('prevention')">${L ? 'बचाव' : 'Prevention'}</span>` +
+                        `<span class="chip" onclick="showPhotoGuide()">${L ? 'फ़ोटो गाइड' : 'Photo Guide'}</span>` +
                         `<span class="chip" onclick="resetCase()">${L ? 'नया केस' : 'New Case'}</span>` +
                     `</div>` +
                     `<div class="chat-bar">` +
@@ -1204,6 +1205,13 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         function aiPhotoAgain() { triggerPhotoUpload(); }
 
+        function showPhotoGuide() {
+            const L = D.set.lang === 'hi';
+            pushBot(L
+                ? '<b>साफ़ और उपयोगी बर्न फ़ोटो कैसे लें</b><br><br>• अच्छी, समान रोशनी में फ़ोटो लें; फ्लैश और परछाई से बचें।<br>• घाव को फ्रेम का लगभग दो-तिहाई हिस्सा रखें और कैमरा त्वचा के समानांतर रखें।<br>• शरीर का भाग और बायाँ/दायाँ पक्ष कैप्शन में लिखें।<br>• एक वाइड, एक मिड-रेंज और एक क्लोज़-अप फ़ोटो अलग-अलग भेजें।<br>• चेहरे या पहचान संबंधी जानकारी शामिल न करें।<br><br>फ़ोटो अपलोड बटन दबाकर एक-एक फ़ोटो भेजें।'
+                : '<b>How to take a useful burn photo</b><br><br>• Use even lighting; avoid flash glare and shadows.<br>• Keep the wound about two-thirds of the frame and hold the camera parallel to the skin.<br>• Add the body part and left/right side in the caption.<br>• Send one overview, one mid-range, and one close-up photo separately.<br>• Avoid faces and identifying information.<br><br>Use Upload Photo to send images one at a time.', { html: 1 });
+        }
+
         function aiPhotoSend(inp) {
             const f = inp.files[0]; if (!f) return; inp.value = '';
             const cap = (($('#ci') || {}).value || '').trim(); if ($('#ci')) $('#ci').value = '';
@@ -1222,12 +1230,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 
                 const img = new Image();
                 img.onload = () => { 
-                    const sc = Math.min(1, 900 / Math.max(img.width, img.height)); 
+                    const sc = Math.min(1, 1200 / Math.max(img.width, img.height));
                     const c = document.createElement('canvas'); 
                     c.width = Math.max(1, Math.round(img.width * sc)); 
                     c.height = Math.max(1, Math.round(img.height * sc)); 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    c.toBlob(b => photoGo(b || f, cap), 'image/jpeg', 0.72); 
+                    c.toBlob(b => photoGo(b || f, cap), 'image/jpeg', 0.85);
                 };
                 img.src = dataUrl;
             };
@@ -1249,15 +1257,17 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 const d = await r.json();
                 removeTyping();
                 
-                if (!d.is_burn) { 
+                if (!d.is_burn || !Array.isArray(d.regions) || !d.regions.length) {
                     pushBot(S().not_burn || (L ? 'इस तस्वीर में जलने की कोई चोट नहीं मिली।' : 'No burn injury was detected in this photo.')); 
                     return; 
                 }
                 
                 mergeFindings(d.regions); 
                 caseCirc = caseCirc || !!d.circumferential; 
-                caseDesc = d.description || ''; 
-                caseRed = d.red_flags || [];
+                if (d.description) {
+                    caseDesc = [caseDesc, d.description].filter(Boolean).join(' ');
+                }
+                caseRed = [...new Set([...(caseRed || []), ...(d.red_flags || [])])];
                 
                 if (d.description) {
                     await streamBotMessage(d.description);
@@ -1267,22 +1277,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 }
                 if (!caseAge) askAge(); else assessNow();
             } catch (e) { 
-                // Seamless clinical fallback so photo assessment NEVER fails
                 removeTyping();
-                const fallbackDesc = L 
-                    ? 'घाव का विज़ुअल परीक्षण: आंशिक मोटाई (2nd degree) की जलन के लक्षण दिखे हैं — स्थानीय लालिमा, एपिडर्मिस क्षति और छाले (blisters) मौजूद हैं।' 
-                    : 'Visual wound examination: superficial to partial-thickness dermal burn injury identified with localized erythema, epidermis disruption, and blister formation.';
-                const fallbackFlags = L 
-                    ? ['छाले पड़ना (2nd degree आंशिक मोटाई जलन)', 'त्वचा में स्थानीय लालिमा व सूजन (Erythema & Edema)', 'संक्रमण (Infection) से बचाव आवश्यक'] 
-                    : ['Blister formation (partial thickness dermis involvement)', 'Localized dermal erythema and tissue edema', 'Risk of bacterial contamination'];
-                
-                caseBurns = [{ region: 'right_forearm_front', fraction: 0.5, depth: 'superficial_partial' }];
-                caseDesc = fallbackDesc;
-                caseRed = fallbackFlags;
-                
-                await streamBotMessage(fallbackDesc);
-                pushBot('<b>⚠️ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + fallbackFlags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
-                if (!caseAge) askAge(); else assessNow();
+                pushBot(L
+                    ? 'फ़ोटो का विश्लेषण पूरा नहीं हो सका। कृपया साफ़, अच्छी रोशनी वाली फ़ोटो दोबारा भेजें।'
+                    : 'Photo analysis could not be completed. Please send the image again with good lighting and the injured area clearly visible.');
             }
         }
 
