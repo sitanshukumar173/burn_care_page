@@ -1800,25 +1800,37 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         function parseHospitalQuery(text) {
             const facility = /\b(hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|medical\s+cent(?:re|er)|aspatal|aspataal|haspatal)\b|अस्पताल|हॉस्पिटल|दवाखाना/i;
-            const locator = /\b(near|nearby|nearest|close|closest|around|find|where|location|address|list|show|in|at)\b|पास|नज़दीक|नजदीक|कहाँ|कहां|ढूंढ|बताओ/i;
+            const locator = /\b(near|nearby|nearest|close|closest|around|find|where|location|address|list|show|in|at|paas)\b|पास|नज़दीक|नजदीक|कहाँ|कहां|ढूंढ|बताओ/i;
             if (!facility.test(text) || !locator.test(text)) return { requested: false, place: '' };
             const selfLocation = /\b(near\s+me|nearby|my\s+location|current\s+location|here)\b|पास\s*के|नज़दीकी/i.test(text);
-            if (selfLocation && !/\b(?:in|at|near)\s+[a-z]/i.test(text)) {
+            if (selfLocation && !/\b(?:in|at|near|to)\s+[a-z]/i.test(text)) {
                 const candidate = text
                     .replace(/\b(?:near\s+me|nearby|my\s+location|current\s+location|here|hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|find|show|list)\b/gi, '')
                     .replace(/पास\s*के|नज़दीकी|अस्पताल|हॉस्पिटल|दवाखाना/gi, '')
+                    .replace(/^(?:mujhe|mujhko|mere|mera|meri|please|plz)\s+/i, '')
                     .replace(/[?!.,]+$/g, '').replace(/\s+/g, ' ').trim();
                 return { requested: true, place: candidate };
             }
             let place = '';
             const after = text.match(/\b(?:near|in|at|around)\s+(.+?)(?:\s+(?:for|please|pls|plz))?$/i);
             if (after) place = after[1].trim();
+            if (/^(?:hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward))$/i.test(place)) {
+                place = '';
+            }
             if (!place) {
-                const before = text.match(/^(.+?)\s+(?:mein|me|mai|ke\s+paas|ke\s+nazdik|के\s+पास|में)\s+/i);
+                const beforeFacility = text.match(/^(.+?)\s+(?:near|around)\s+(?:the\s+)?(?:hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward))\b/i);
+                if (beforeFacility) place = beforeFacility[1].replace(/^(?:find|show|list)\s+/i, '').trim();
+            }
+            if (!place) {
+                const toPlace = text.match(/\bto\s+(.+?)(?:\s+(?:for|please|pls|plz))?$/i);
+                if (toPlace) place = toPlace[1].trim();
+            }
+            if (!place) {
+                const before = text.match(/^(.+?)\s+(?:mein|me|mai|ke\s+paas|ke\s+nazdik|ke\s+nazdeek|के\s+पास|में)\s+/i);
                 if (before) place = before[1].trim();
             }
             place = place
-                .replace(/\b(?:find|show|list|hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|please|pls|plz)\b/gi, '')
+                .replace(/\b(?:find|show|list|hospitals?|clinics?|burn\s+(?:cent(?:re|er)|unit|ward)|please|pls|plz|mujhe|mujhko|mere|mera|meri)\b/gi, '')
                 .replace(/[?!.,]+$/g, '').replace(/\s+/g, ' ').trim();
             if (!place || /^(me|my|here|this|the|nearby|पास|नज़दीकी)$/i.test(place)) return { requested: true, place: '' };
             return { requested: true, place };
