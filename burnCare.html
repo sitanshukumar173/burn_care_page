@@ -1527,7 +1527,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         const displayPlace = areaName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
                         chat.push({ c: 'u', x: `${L ? 'मेरी लोकेशन' : 'Shared location'}: ${displayPlace}` });
                         chatInit();
-                        hospLookup({ lat, lon, place: areaName || 'Kanpur' }); 
+                        hospLookup({ lat, lon, place: areaName || `${lat.toFixed(5)}, ${lon.toFixed(5)}` }); 
                     }, 
                     err => { 
                         removeTyping();
@@ -1567,8 +1567,8 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             // 1. If coordinates not provided, geocode placeName via OpenStreetMap Nominatim
             if ((!lat || !lon) && placeName) {
                 try {
-                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`, {
-                        headers: { 'Accept': 'application/json' }
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1&addressdetails=1&countrycodes=in`, {
+                        headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
                     });
                     if (geoRes.ok) {
                         const geoArr = await geoRes.json();
@@ -1583,19 +1583,22 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 } catch (e) {}
             }
 
-            // Fallback default coordinates (Kanpur / CSJMU) if still missing
-            if (!lat || !lon) {
-                lat = 26.5037;
-                lon = 80.2526;
-                if (!placeName) placeName = 'Kalyanpur, Kanpur';
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                removeTyping();
+                pushBot(L
+                    ? 'यह स्थान सटीक रूप से नहीं मिला। कृपया शहर, क्षेत्र या लैंडमार्क का नाम दोबारा लिखें।'
+                    : 'That place could not be located accurately. Please enter a city, area, or landmark again.');
+                return;
             }
 
             let foundHospitals = [];
 
-            // 2. Query live OpenStreetMap hospitals near coordinates/place
+            // Query live hospitals in a small bounding box around the resolved location.
             try {
-                const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=hospital+near+${encodeURIComponent(placeName)}&limit=8`, {
-                    headers: { 'Accept': 'application/json' }
+                const delta = 0.12;
+                const viewbox = `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
+                const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=hospital&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1`, {
+                    headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
                 });
                 if (osmRes.ok) {
                     const osmData = await osmRes.json();
@@ -1621,10 +1624,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 }
             } catch (err) {}
 
-            // 3. Merge verified city burn centers
+            // Merge verified centers only when the resolved place belongs to that city.
             const pLower = (placeName || '').toLowerCase();
-            let cityKey = Object.keys(CITY_HOSPITALS).find(k => pLower.includes(k)) || 'kanpur';
-            if (CITY_HOSPITALS[cityKey]) {
+            const cityKey = Object.keys(CITY_HOSPITALS).find(k => pLower.includes(k));
+            if (cityKey && CITY_HOSPITALS[cityKey]) {
                 CITY_HOSPITALS[cityKey].forEach(ch => {
                     const dKm = haversineDistKm(lat, lon, ch.lat, ch.lon);
                     // Avoid duplicate if already found
@@ -1703,10 +1706,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const hospRegex = /(hospital|hospitals|hpoospital|hpoospitals|hostipal|hosptial|clinic|clinics|doctor|doctors|burn center|burn unit|अस्पताल|दवाखाना|डॉक्टर|nearby|near me|paas ke|paas me|kahan hai)/i;
             if (hospRegex.test(qLower)) {
                 let cleanPlace = q
-                    .replace(/nearby|near me|paas ke|paas me|kahan hai|khoje|khojo|search|dikhaye|dikhao|find|list|show me|batao|please|plz/gi, '')
+                    .replace(/nearby|near me|\bnear\b|paas ke|paas me|kahan hai|khoje|khojo|search|dikhaye|dikhao|find|list|show me|batao|please|plz/gi, '')
                     .replace(/hospitals?|hpoospitals?|hostipals?|clinics?|doctors?|burn centers?|burn units?|अस्पताल|दवाखाना/gi, '')
                     .trim();
-                cleanPlace = cleanPlace.replace(/kanpy/gi, 'kanpur');
+                cleanPlace = cleanPlace.replace(/\bkanpy\b/gi, 'kanpur').replace(/\s+/g, ' ').trim();
                 
                 if (cleanPlace.length >= 2) {
                     hospLookup({ place: cleanPlace });
