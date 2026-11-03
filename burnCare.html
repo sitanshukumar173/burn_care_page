@@ -1262,12 +1262,18 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             showTyping(L ? 'इमेज का विश्लेषण हो रहा है…' : 'Analyzing image…');
             
             try {
-                const fd = new FormData(); 
-                fd.append('file', blob, 'photo.jpg'); 
+                const requestId = `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                const fd = new FormData();
+                fd.append('file', blob, `${requestId}.jpg`);
                 fd.append('caption', cap); 
                 fd.append('lang', API_LANG());
                 
-                const r = await timedFetch((API ? API : '') + '/api/photo', { method: 'POST', body: fd }, 45000);
+                const r = await timedFetch((API ? API : '') + '/api/photo', {
+                    method: 'POST',
+                    body: fd,
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache', 'X-BurnCare-Request': requestId }
+                }, 45000);
                 if (!r.ok) {
                     const error = new Error('Photo API error');
                     error.status = r.status;
