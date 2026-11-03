@@ -700,7 +700,7 @@
             ai() {
                 const L = D.set.lang == 'hi'; 
                 return head('BurnCare AI', (L ? 'लाइव AI — CSJMU BurnCare Saathi' : 'Live AI — CSJMU BurnCare Saathi'), 
-                    `<button class="s" onclick="D.set.lang=D.set.lang=='hi'?'en':'hi';save();stringsP=null;hist=[];draw()">${L ? 'English' : 'हिन्दी'}</button>` +
+                    `<button class="s" onclick="D.set.lang=D.set.lang=='en'?'hi':(D.set.lang=='hi'?'hinglish':'en');save();stringsP=null;hist=[];draw()">🌐 ${D.set.lang=='en'?'हिन्दी':(D.set.lang=='hi'?'Hinglish':'English')}</button>` +
                     `<button class="s" onclick="chat=[];hist=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
                     `<div class="warn"><b>${L ? 'क्लीनिकल प्रोटोटाइप' : 'Clinical Prototype'}</b> — ${L ? 'जलने की चोट के प्रश्न, आपातकालीन ट्राइएज और फ़ोटो विश्लेषण CSJMU BurnCare Saathi द्वारा संचालित हैं। आपातकाल में 112/108 डायल करें।' : 'Live burn injury guidance, Lund &amp; Browder TBSA analysis, and hospital triage. In an emergency, dial 112/108.'}</div>` +
                     `<div id="chat"></div>` +
@@ -861,10 +861,7 @@
             if (el) el.click();
         }
 
-        function triggerCameraCapture() {
-            const el = $('#aiCam');
-            if (el) el.click();
-        }
+
 
         // Verified medical texts from i18n.py
         const EMBEDDED_TEXTS = {
