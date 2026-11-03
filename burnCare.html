@@ -1348,6 +1348,12 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const pct = lbAgeMap[caseAge] || 4.75;
             lastTbsa = Math.round(pct * 10) / 10;
             const ageLabel = ((S().age_options || FALLBACK_AGE).find(o => o.value === caseAge) || {}).label || (L ? 'वयस्क' : 'Adult');
+            const areaRows = caseBurns.map(b => {
+                const label = String(b.region || '').replace(/_/g, ' ');
+                const fraction = Math.round(Math.max(0, Math.min(1, +b.fraction || 0)) * 100);
+                const depth = String(b.depth || 'unclear').replace(/_/g, ' ');
+                return `• ${esc(label)}: ${fraction}% of region, ${esc(depth)}`;
+            }).join('<br>') || (L ? '• कोई सत्यापित जला क्षेत्र उपलब्ध नहीं है।' : '• No verified burned region is available.');
 
             // Try backend assessment
             try {
@@ -1358,14 +1364,16 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         burns: caseBurns.length ? caseBurns : [{ region: 'right_forearm_front', fraction: 0.5, depth: 'superficial_partial' }], 
                         circumferential: !!caseCirc, 
                         age: caseAge || 'adult', 
-                        lang: API_LANG() 
+                        lang: API_LANG(),
+                        description: caseDesc,
+                        red_flags: caseRed || []
                     }) 
                 });
                 if (r.ok) {
                     const d = await r.json();
-                    if (d.report) {
+                    if (d.report || d.report_text) {
                         removeTyping();
-                        pushBot(d.report, { html: 1 });
+                        pushBot(d.report || d.report_text, { html: 1 });
                         renderAssessActions(d.tbsa || lastTbsa);
                         return;
                     }
@@ -1391,7 +1399,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
     
     <div style="margin-bottom:6px"><b>जले हुए हिस्से का विश्लेषण:</b></div>
     <div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px">
-        • दायाँ अग्रबाहु (हाथ): हिस्से का ~50%, आंशिक मोटाई (2nd degree) → <b>${lastTbsa}% TBSA</b>
+        ${areaRows}
     </div>
 
     <div style="margin-bottom:4px">📏 <b>अनुमानित कुल TBSA: ${lastTbsa}%</b> (सेकंड डिग्री आंशिक मोटाई)</div>
@@ -1433,7 +1441,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
     
     <div style="margin-bottom:6px"><b>Burned Areas Breakdown:</b></div>
     <div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px">
-        • Right Forearm / Hand: ~50% of region, Partial thickness (2nd degree) → <b>${lastTbsa}% TBSA</b>
+        ${areaRows}
     </div>
 
     <div style="margin-bottom:4px">📏 <b>Estimated Total TBSA: ${lastTbsa}%</b> (2nd degree partial thickness)</div>
