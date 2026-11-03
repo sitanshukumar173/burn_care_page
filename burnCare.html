@@ -333,7 +333,7 @@
         }
 
         #chat {
-            height: 380px;
+            height: 420px;
             overflow-y: auto;
             background: #fff;
             border: 1px solid var(--line);
@@ -342,21 +342,24 @@
         }
 
         .msg {
-            max-width: 78%;
+            max-width: 82%;
             padding: 9px 13px;
             border-radius: 12px;
             margin: 8px 0;
-            white-space: pre-wrap
+            white-space: pre-wrap;
+            word-break: break-word
         }
 
         .msg.u {
             background: var(--blue);
             color: #fff;
-            margin-left: auto
+            margin-left: auto;
+            border-bottom-right-radius: 2px
         }
 
         .msg.b {
-            background: #eef3f9
+            background: #eef3f9;
+            border-bottom-left-radius: 2px
         }
 
         .msg.em {
@@ -364,6 +367,79 @@
             border: 2px solid var(--red);
             color: #7a141a;
             font-weight: 600
+        }
+
+        .typing-bubble {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 9px 14px;
+            background: #eef3f9;
+            border-radius: 12px;
+            border-bottom-left-radius: 2px;
+            margin: 8px 0;
+            width: fit-content
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--blue);
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounceDot 1.4s infinite ease-in-out both
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s }
+
+        @keyframes bounceDot {
+            0%, 80%, 100% { transform: scale(0.3); opacity: 0.4 }
+            40% { transform: scale(1); opacity: 1 }
+        }
+
+        .typing-text {
+            font-size: 12px;
+            color: var(--mut);
+            margin-left: 6px;
+            font-style: italic
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 2px;
+            height: 14px;
+            background: var(--navy);
+            margin-left: 2px;
+            vertical-align: middle;
+            animation: blinkCur 0.8s infinite
+        }
+
+        @keyframes blinkCur { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+
+        .chat-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px
+        }
+
+        .action-tray {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 10px 0
+        }
+
+        .action-tray .chip {
+            margin: 0;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04)
+        }
+
+        .action-tray .chip:hover {
+            background: var(--blue);
+            color: #fff
         }
 
         .src {
@@ -603,8 +679,29 @@
 <div class="card"><h3>Cases by status (sample)</h3>${bars(cnt(D.cases, c => c.status))}</div><div class="card"><h3>Referral status (sample)</h3>${bars(cnt(D.refs, r => r.status))}</div></div>`
             },
             ai() {
-                const L = D.set.lang == 'hi'; return head('BurnCare AI', (L ? 'सामान्य जानकारी — केवल डेमो' : 'General information — demonstration only'), `<button class="s" onclick="D.set.lang=D.set.lang=='hi'?'en':'hi';save();draw()">${L ? 'English' : 'हिन्दी'}</button><button class="s" onclick="chat=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear conversation'}</button>`) +
-                    `<p><span class="tag">Prototype Mode — Rule-Based Responses, Not Live AI</span></p><div class="warn"><b>Demo information only. This prototype is not a substitute for professional medical assessment.</b></div><div id="chat"></div><div style="margin:8px 0">${QS.map((q, i) => `<span class="chip" onclick="ask(QS[${i}][D.set.lang=='hi'?1:0])">${q[D.set.lang == 'hi' ? 1 : 0]}</span>`).join('')}</div><div class="row"><input id="ci" placeholder="${L ? 'अपना प्रश्न लिखें' : 'Type your question'}" onkeydown="if(event.key=='Enter')ask()"><button onclick="ask()">${L ? 'भेजें' : 'Send'}</button></div>`
+                const L = D.set.lang == 'hi'; 
+                return head('BurnCare AI', (L ? 'लाइव AI — CSJMU BurnCare Saathi (AWS बैकएंड)' : 'Live AI — CSJMU BurnCare Saathi (AWS Backend)'), 
+                    `<button class="s" onclick="D.set.lang=D.set.lang=='hi'?'en':'hi';save();stringsP=null;hist=[];draw()">${L ? 'English' : 'हिन्दी'}</button>` +
+                    `<button class="s" onclick="apiConfigModal()">⚙️ API</button>` +
+                    `<button class="s" onclick="chat=[];hist=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
+                    `<div class="warn"><b>${L ? 'क्लीनिकल प्रोटोटाइप' : 'Clinical Prototype'}</b> — ${L ? 'जलने की चोट के प्रश्न, आपातकालीन ट्राइएज और फ़ोटो विश्लेषण सीधे AWS बैकएंड (Gemini) से संचालित हैं। आपातकाल में 112/108 डायल करें।' : 'Live burn injury guidance, Lund &amp; Browder TBSA analysis, and hospital triage powered by the AWS backend. In an emergency, dial 112/108.'}</div>` +
+                    `<div id="chat"></div>` +
+                    `<div class="action-tray">` +
+                        `<span class="chip" onclick="aiHospitalGo()">📍 ${L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals'}</span>` +
+                        `<span class="chip" onclick="$('#aiPh').click()">📷 ${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span>` +
+                        `<span class="chip" onclick="$('#aiCam').click()">📱 ${L ? 'कैमरा' : 'Take Photo'}</span>` +
+                        `<span class="chip" onclick="parklandGo()">💧 ${L ? 'पार्कस्टैंड फ़ॉर्मूला' : 'Parkland Formula'}</span>` +
+                        `<span class="chip" onclick="aiText('first_aid')">🩹 ${L ? 'प्राथमिक उपचार' : 'First Aid'}</span>` +
+                        `<span class="chip" onclick="aiText('prevention')">🛡️ ${L ? 'बचाव' : 'Prevention'}</span>` +
+                        `<span class="chip" onclick="resetCase()">🔄 ${L ? 'नया केस' : 'New Case'}</span>` +
+                    `</div>` +
+                    `<div class="chat-bar">` +
+                        `<button class="s" title="${L ? 'फ़ोटो अपलोड करें' : 'Upload / Capture Photo'}" onclick="$('#aiPh').click()">📷</button>` +
+                        `<input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें या फ़ोटो भेजें…' : 'Ask any burn injury question, request first aid, or send photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">` +
+                        `<button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>` +
+                    `</div>` +
+                    `<input type="file" id="aiPh" accept="image/*" style="display:none" onchange="aiPhotoSend(this)">` +
+                    `<input type="file" id="aiCam" accept="image/*" capture="environment" style="display:none" onchange="aiPhotoSend(this)">`
             },
             pt() {
                 if (sel.pid) return ptDetail(); const q = flt.q.toLowerCase(), r = D.pts.filter(p => (p.name + p.id).toLowerCase().includes(q) && (!flt.s || D.cases.some(c => c.pid == p.id && c.status == flt.s)));
@@ -709,24 +806,398 @@
                 $('#pq').innerHTML = `<div class="card" style="margin-top:8px"><h3>Assisted capture check</h3><span class="tag">Local image analysis — not a trained AI model; does not assess the wound</span>${ck.map(k => `<p style="margin:5px 0">${k[0] ? '✅' : '⚠️'} <b>${k[1]}</b>${k[0] ? '' : '<br><small>' + k[2] + '</small>'}</p>`).join('')}<p><b>${v}</b></p><small>Reminder: include a scale and case label beside the wound.</small></div>`
             }; im.src = src
         }
-        /* ===== 6. CHATBOT DEMO RULES ===== */
-        const QS = [['What should someone do immediately after a burn?', 'जलने के तुरंत बाद क्या करना चाहिए?'], ['What should not be applied to a burn?', 'जले हुए स्थान पर क्या नहीं लगाना चाहिए?'], ['When should urgent medical care be sought?', 'तुरंत चिकित्सा सहायता कब लेनी चाहिए?'], ['What information should be shared with a doctor?', 'डॉक्टर को कौन सी जानकारी देनी चाहिए?'], ['How can I contact this demo hospital?', 'इस डेमो अस्पताल से संपर्क कैसे करें?'], ['What is the purpose of a burn-care follow-up?', 'बर्न-केयर फ़ॉलो-अप का उद्देश्य क्या है?']];
-        const SRC = 'Source: Sample content — requires clinician review';
-        const RULES = [
-            { k: /immediate|first aid|after a burn|तुरंत|प्राथमिक/i, en: 'General first-aid information: move away from the heat source, cool the area with cool (not ice-cold) running water for about 20 minutes, remove rings or loose items near the area unless stuck to skin, and cover loosely with a clean non-fluffy material. Seek professional assessment.', hi: 'सामान्य प्राथमिक जानकारी: गर्मी के स्रोत से दूर हों, प्रभावित जगह को लगभग 20 मिनट ठंडे (बर्फ जैसे नहीं) बहते पानी से ठंडा करें, अंगूठी/ढीली चीज़ें हटाएँ (यदि त्वचा से चिपकी न हों), और साफ़ कपड़े से ढीला ढकें। पेशेवर जाँच कराएँ।' },
-            { k: /not.*appl|ice|butter|toothpaste|ghee|oil|नहीं लगाना|क्या नहीं/i, en: 'General information: avoid applying ice, butter, ghee, oil, toothpaste or home remedies, and avoid bursting blisters. Ask a qualified clinician what is suitable.', hi: 'सामान्य जानकारी: बर्फ, मक्खन, घी, तेल, टूथपेस्ट या घरेलू नुस्खे न लगाएँ, और फफोले न फोड़ें। उपयुक्त उपचार के लिए योग्य चिकित्सक से पूछें।' },
-            { k: /urgent|when.*(seek|care|doctor)|कब|तुरंत चिकित्सा/i, en: 'General guidance: seek urgent medical care for burns that are large, on the face, hands, feet or genitals, caused by chemicals or electricity, involve breathing difficulty, or affect children or older adults. When in doubt, seek help.', hi: 'सामान्य मार्गदर्शन: बड़े जलने, चेहरे/हाथ/पैर/जननांग पर जलने, रसायन या बिजली से जलने, साँस की तकलीफ़, या बच्चों/बुज़ुर्गों में तुरंत चिकित्सा सहायता लें। संदेह हो तो मदद लें।', em: 1 },
-            { k: /share|information.*doctor|tell.*doctor|जानकारी/i, en: 'Useful to share: when and how the injury happened, the body areas affected, what first aid was done, pain level, allergies, current medicines, tetanus status and any medical conditions.', hi: 'साझा करने योग्य: चोट कब और कैसे लगी, कौन से अंग प्रभावित हैं, क्या प्राथमिक उपचार हुआ, दर्द, एलर्जी, चल रही दवाएँ, टिटनेस स्थिति और अन्य बीमारियाँ।' },
-            { k: /contact|phone|address|hospital|संपर्क|अस्पताल/i, en: 'FICTIONAL demo details only: Demo Hospital — Sample Data · Burn OPD (placeholder) · Phone: 000-000-0000 (placeholder) · Email: demo@example.invalid. Replace with approved hospital information before any real use.', hi: 'केवल काल्पनिक डेमो विवरण: डेमो हॉस्पिटल · बर्न OPD (प्लेसहोल्डर) · फ़ोन: 000-000-0000 (प्लेसहोल्डर)। वास्तविक उपयोग से पहले अनुमोदित जानकारी डालें।' },
-            { k: /follow.?up|फ़ॉलो|फॉलो/i, en: 'Follow-up lets the treating clinician review wound progress, update the plan, arrange referrals or rehabilitation, and answer questions. The schedule is decided by the clinician.', hi: 'फ़ॉलो-अप में उपचार करने वाले चिकित्सक घाव की प्रगति देखते हैं, योजना बदलते हैं, रेफ़रल या पुनर्वास तय करते हैं। समय-सारणी चिकित्सक तय करते हैं।' }];
+        /* ===== 6. CHATBOT — live via the CSJMU BurnCare Saathi AWS backend ===== */
+        const AWS_HOST = 'ec2-32-236-38-3.ap-southeast-2.compute.amazonaws.com';
+        const DEFAULT_API = (window.location.protocol === 'https:' ? 'https://' : 'http://') + AWS_HOST + (window.location.protocol === 'https:' ? '' : ':8123');
+        let API = localStorage.getItem('burncare_api_url') || DEFAULT_API;
+
+        function apiConfigModal() {
+            modal('AWS Backend API Connection', [
+                { k: 'url', l: 'Bridge / Bot API Base URL (HTTPS/HTTP)', v: API, req: 1 }
+            ], { url: API }, o => {
+                let u = o.url.trim().replace(/\/+$/, '');
+                if (!u) u = DEFAULT_API;
+                API = u;
+                localStorage.setItem('burncare_api_url', API);
+                stringsP = null;
+                toast('API endpoint updated: ' + API);
+                loadStrings();
+            });
+        }
+
         const EMG = /large|face|chemical|electric|breath|unconscious|infant|baby|severe|inhalation|smoke|बड़ा|चेहरा|रसायन|बिजली|साँस|बेहोश|गंभीर/i;
-        let chat = [];
-        function chatInit() { const c = $('#chat'); if (!c) return; const L = D.set.lang == 'hi'; c.innerHTML = chat.length ? chat.map(m => `<div class="msg ${m.c}">${esc(m.x)}${m.s ? `<span class="src">${m.s}</span>` : ''}</div>`).join('') : `<p style="color:var(--mut);text-align:center;margin-top:120px">${L ? 'कोई प्रश्न चुनें या लिखें। यह डेमो नियम-आधारित है।' : 'Choose a suggested question or type your own. Answers come from fixed demo rules.'}</p>`; c.scrollTop = c.scrollHeight }
-        function ask(q) {
-            const i = $('#ci'); q = (q || i.value).trim(); if (!q) return; i.value = ''; const L = D.set.lang == 'hi'; chat.push({ c: 'u', x: q });
-            if (EMG.test(q)) chat.push({ c: 'em', x: L ? '⚠ यह गंभीर हो सकता है। देरी न करें — तुरंत नज़दीकी आपातकालीन सेवा/योग्य चिकित्सक से संपर्क करें।' : '⚠ This may be serious. Do not wait — seek urgent professional medical help or contact local emergency services now.' });
-            chatInit(); const c = $('#chat'); c.insertAdjacentHTML('beforeend', '<div class="msg b" id="ty">…</div>'); c.scrollTop = c.scrollHeight;
-            setTimeout(() => { const r = RULES.find(r => r.k.test(q)); chat.push(r ? { c: 'b', x: L ? r.hi : r.en, s: SRC } : { c: 'b', x: L ? 'यह प्रोटोटाइप इस प्रश्न का भरोसेमंद उत्तर नहीं दे सकता। कृपया योग्य चिकित्सक से संपर्क करें।' : 'This prototype cannot answer that reliably. Please contact a qualified clinician.' }); chatInit() }, 600)
+        const DEPTH_O = ['superficial', 'unclear', 'superficial_partial', 'deep_partial', 'full_thickness'];
+        const FALLBACK_AGE = [{ value: 'under_1', label: 'Under 1 year' }, { value: '1_4', label: '1–4 years' }, { value: '5_9', label: '5–9 years' }, { value: '10_14', label: '10–14 years' }, { value: '15_17', label: '15–17 years' }, { value: 'adult', label: 'Adult (18+)' }];
+        let chat = [], hist = [], stringsP = null, caseBurns = [], caseCirc = false, caseAge = null, caseDesc = '', caseRed = [], lastTbsa = null;
+        const S = () => stringsP || {};
+        const API_LANG = () => (D.set.lang == 'hi' ? 'hi' : 'en');
+
+        function loadStrings() { 
+            if (stringsP) return Promise.resolve(stringsP); 
+            stringsP = fetch(API + '/api/strings?lang=' + API_LANG())
+                .then(r => (r.ok ? r.json() : null))
+                .then(j => { stringsP = j || null; return stringsP; })
+                .catch(() => { stringsP = null; return null; }); 
+            return stringsP; 
+        }
+
+        function showTyping(statusText) {
+            removeTyping();
+            const c = $('#chat');
+            if (!c) return;
+            const defaultTxt = D.set.lang == 'hi' ? 'बर्नकेयर AI उत्तर लिख रहा है…' : 'BurnCare AI is typing…';
+            c.insertAdjacentHTML('beforeend', `
+                <div class="typing-bubble" id="ty">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-text">${esc(statusText || defaultTxt)}</span>
+                </div>
+            `);
+            c.scrollTop = c.scrollHeight;
+        }
+
+        function removeTyping() {
+            const ty = $('#ty');
+            if (ty) ty.remove();
+        }
+
+        function chatInit() {
+            const c = $('#chat'); if (!c) return; const L = D.set.lang == 'hi';
+            if (chat.length) {
+                c.innerHTML = chat.map(m => `<div class="msg ${m.c}">${m.html ? m.x : esc(m.x)}</div>`).join('');
+            } else if (S().welcome) {
+                c.innerHTML = '<div class="msg b">' + S().welcome + '</div>';
+            } else {
+                c.innerHTML = `
+                    <div style="color:var(--mut);text-align:center;margin-top:70px;padding:20px">
+                        <div style="font-size:32px;margin-bottom:8px">🩺</div>
+                        <b style="font-size:15px;color:var(--navy)">${L ? 'CSJMU बर्नकेयर साथी (AI बॉट)' : 'CSJMU BurnCare Saathi AI'}</b>
+                        <p style="font-size:12.5px;max-width:380px;margin:8px auto">${L ? 'जलने की चोट के बारे में कोई भी प्रश्न पूछें, घाव की फ़ोटो अपलोड करें, या नज़दीकी अस्पताल खोजें।' : 'Ask clinical burn-injury questions, upload wound photos for TBSA analysis, or find burn centers near you.'}</p>
+                    </div>`;
+            }
+            c.scrollTop = c.scrollHeight;
+            loadStrings().then(j => { if (j && !chat.length && cur == 'ai') chatInit(); });
+        }
+
+        function pushBot(x, o) { 
+            removeTyping();
+            o = o || {}; 
+            chat.push({ c: o.cls || 'b', x, html: o.html || 0 }); 
+            chatInit(); 
+        }
+
+        async function streamBotMessage(fullText, options) {
+            removeTyping();
+            options = options || {};
+            if (!fullText) return;
+            
+            if (options.html) {
+                pushBot(fullText, options);
+                return;
+            }
+
+            const c = $('#chat');
+            const msgObj = { c: options.cls || 'b', x: '', html: 0 };
+            chat.push(msgObj);
+            
+            if (c) {
+                const bubble = document.createElement('div');
+                bubble.className = `msg ${msgObj.c}`;
+                bubble.innerHTML = '<span class="cursor-blink"></span>';
+                c.appendChild(bubble);
+                c.scrollTop = c.scrollHeight;
+
+                const words = fullText.split(' ');
+                let accumulated = '';
+                for (let i = 0; i < words.length; i++) {
+                    accumulated += (i === 0 ? '' : ' ') + words[i];
+                    msgObj.x = accumulated;
+                    bubble.innerHTML = esc(accumulated) + '<span class="cursor-blink"></span>';
+                    c.scrollTop = c.scrollHeight;
+                    await new Promise(r => setTimeout(r, 16));
+                }
+                bubble.innerHTML = esc(accumulated);
+            } else {
+                msgObj.x = fullText;
+                chatInit();
+            }
+        }
+
+        async function ask(q) {
+            const i = $('#ci'); 
+            q = (q || (i && i.value) || '').trim(); 
+            if (!q) return; 
+            if (i) i.value = ''; 
+            const L = D.set.lang == 'hi';
+            
+            chat.push({ c: 'u', x: q });
+            if (EMG.test(q)) {
+                chat.push({ c: 'em', x: L ? '⚠ यह गंभीर हो सकता है। देरी न करें — तुरंत नज़दीकी आपातकालीन सेवा (112/108) या योग्य चिकित्सक से संपर्क करें।' : '⚠ This may be serious. Do not wait — seek urgent professional medical help or contact local emergency services (112/108) immediately.' });
+            }
+            chatInit(); 
+            showTyping(L ? 'जवाब तैयार हो रहा है…' : 'BurnCare AI is thinking…');
+            
+            try {
+                const r = await fetch(API + '/api/chat', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ message: q, history: hist.slice(-12), lang: API_LANG() }) 
+                });
+                if (!r.ok) throw new Error('API ' + r.status);
+                const d = await r.json();
+                hist.push(['user', q], ['model', d.answer]); 
+                if (hist.length > 12) hist = hist.slice(-12);
+                
+                await streamBotMessage(d.answer);
+            } catch (e) { 
+                removeTyping();
+                const errTxt = S().llm_down || (L ? 'AI सेवा वर्तमान में अनुपलब्ध है। कृपया प्राथमिक उपचार बटन का उपयोग करें या API कनेक्शन जाँचें।' : 'AI service is currently unavailable. Tap First Aid above for standard protocols or verify API settings.');
+                pushBot(errTxt); 
+            }
+        }
+
+        function aiText(k) { 
+            loadStrings().then(j => { 
+                if (j && j[k]) pushBot(j[k], { html: 1 }); 
+                else toast('Bridge backend unreachable at: ' + API, 1); 
+            }); 
+        }
+
+        function resetCase() { 
+            caseBurns = []; caseCirc = false; caseAge = null; caseDesc = ''; caseRed = []; lastTbsa = null; 
+            pushBot(S().reset_done || (D.set.lang == 'hi' ? 'नया केस शुरू किया गया। पिछला केस डेटा रीसेट हो गया।' : 'New case started. Previous case data cleared.')); 
+        }
+
+        function aiPhotoAgain() { $('#aiPh').click(); }
+
+        function aiPhotoSend(inp) {
+            const f = inp.files[0]; if (!f) return; inp.value = '';
+            const cap = (($('#ci') || {}).value || '').trim(); if ($('#ci')) $('#ci').value = '';
+            const img = new Image(); const rd = new FileReader();
+            rd.onload = () => { 
+                img.onload = () => { 
+                    const sc = Math.min(1, 1200 / Math.max(img.width, img.height)); 
+                    if (sc >= 1 && /jpe?g/i.test(f.type)) { photoGo(f, cap); return; } 
+                    const c = document.createElement('canvas'); 
+                    c.width = Math.max(1, Math.round(img.width * sc)); 
+                    c.height = Math.max(1, Math.round(img.height * sc)); 
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
+                    c.toBlob(b => photoGo(b || f, cap), 'image/jpeg', 0.85); 
+                }; 
+                img.src = rd.result; 
+            };
+            rd.readAsDataURL(f);
+        }
+
+        function mergeFindings(regs) {
+            (regs || []).forEach(r => {
+                const frac = Math.min(1, Math.max(0, +r.fraction || 0));
+                const i = caseBurns.findIndex(b => b.region === r.region);
+                if (i < 0) { caseBurns.push({ region: r.region, fraction: frac, depth: r.depth }); return; }
+                const b = caseBurns[i]; b.fraction = Math.max(b.fraction, frac);
+                if (DEPTH_O.indexOf(r.depth) > DEPTH_O.indexOf(b.depth)) b.depth = r.depth;
+            });
+        }
+
+        async function photoGo(blob, cap) {
+            const L = D.set.lang == 'hi';
+            chat.push({ c: 'u', x: cap ? '📷 ' + cap : (L ? '📷 (जलने की तस्वीर)' : '📷 (Burn wound photo)') }); 
+            chatInit(); 
+            showTyping(L ? 'घाव की फ़ोटो जाँची जा रही है (Gemini Vision)…' : 'Analyzing wound image with Gemini Vision…');
+            
+            try {
+                const fd = new FormData(); 
+                fd.append('file', blob, 'photo.jpg'); 
+                fd.append('caption', cap); 
+                fd.append('lang', API_LANG());
+                
+                const r = await fetch(API + '/api/photo', { method: 'POST', body: fd }); 
+                if (!r.ok) throw new Error('Photo API ' + r.status); 
+                const d = await r.json();
+                removeTyping();
+                
+                if (!d.is_burn) { 
+                    pushBot(S().not_burn || (L ? 'इस तस्वीर में जलने की कोई चोट नहीं मिली।' : 'No burn injury was detected in this photo.')); 
+                    return; 
+                }
+                
+                mergeFindings(d.regions); 
+                caseCirc = caseCirc || !!d.circumferential; 
+                caseDesc = d.description || ''; 
+                caseRed = d.red_flags || [];
+                
+                if (d.description) {
+                    await streamBotMessage(d.description);
+                }
+                if ((d.red_flags || []).length) {
+                    pushBot('<b>⚠ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + d.red_flags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
+                }
+                if (!caseAge) {
+                    askAge(); 
+                } else {
+                    assessNow();
+                }
+            } catch (e) { 
+                removeTyping();
+                pushBot(S().photo_failed || (L ? 'फ़ोटो का विश्लेषण नहीं किया जा सका। कृपया बैकएंड कनेक्शन जाँचें।' : 'Could not analyse the photo right now. Please verify backend connection.')); 
+            }
+        }
+
+        function askAge() {
+            const L = D.set.lang == 'hi';
+            const opts = S().age_options || FALLBACK_AGE;
+            pushBot(
+                esc(S().age_question || (L ? 'मरीज़ की उम्र क्या है? (Lund & Browder TBSA के लिए आवश्यक)' : 'How old is the burned person? (Required for Lund & Browder TBSA)')) + 
+                '<div style="margin-top:8px">' + 
+                    opts.map(o => `<button class="s sm" style="margin:2px" onclick="setAge('${o.value}')">${esc(o.label)}</button> `).join('') + 
+                '</div>', 
+                { html: 1 }
+            );
+        }
+
+        function setAge(v) { 
+            caseAge = v; 
+            const lbl = ((S().age_options || FALLBACK_AGE).find(o => o.value === v) || {}).label || v; 
+            chat.push({ c: 'u', x: String(lbl) }); 
+            chatInit(); 
+            assessNow(); 
+        }
+
+        async function assessNow() {
+            const L = D.set.lang == 'hi'; 
+            showTyping(L ? 'Lund & Browder TBSA व क्लिनिकल ट्राइएज की गणना हो रही है…' : 'Calculating Lund & Browder TBSA & Clinical Triage…');
+            try {
+                const r = await fetch(API + '/api/assess', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ burns: caseBurns, age: caseAge, circumferential: caseCirc, lang: API_LANG(), description: caseDesc, red_flags: caseRed }) 
+                });
+                if (!r.ok) throw new Error('Assess API ' + r.status); 
+                const d = await r.json(); 
+                lastTbsa = d.tbsa;
+                removeTyping();
+                
+                pushBot(d.report_text, { html: 1, cls: d.level === 'emergency' ? 'em' : 'b' });
+                pushBot(
+                    '<div class="action-tray" style="margin-top:6px">' +
+                        '<span class="chip" onclick="aiPhotoAgain()">➕ ' + (L ? 'अन्य क्षेत्र जोड़ें' : 'Add another area') + '</span>' +
+                        '<span class="chip" onclick="aiHospitalGo()">📍 ' + (L ? 'नज़दीकी अस्पताल' : 'Nearby hospitals') + '</span>' +
+                        '<span class="chip" onclick="parklandGo()">💧 Parkland</span>' +
+                        '<span class="chip" onclick="resetCase()">🔄 ' + (L ? 'नया केस' : 'New case') + '</span>' +
+                    '</div>', 
+                    { html: 1 }
+                );
+            } catch (e) { 
+                removeTyping();
+                pushBot(S().generic_error || (L ? 'मूल्यांकन में त्रुटि हुई।' : 'Could not complete clinical assessment.')); 
+            }
+        }
+
+        function aiHospitalGo() {
+            const L = D.set.lang == 'hi';
+            if (navigator.geolocation && navigator.geolocation.getCurrentPosition) {
+                showTyping(L ? 'डिवाइस लोकेशन प्राप्त की जा रही है…' : 'Detecting GPS location…');
+                navigator.geolocation.getCurrentPosition(
+                    p => { 
+                        removeTyping();
+                        chat.push({ c: 'u', x: L ? '📍 मेरी लोकेशन साझा की' : '📍 Shared current location' });
+                        chatInit();
+                        hospLookup({ lat: p.coords.latitude, lon: p.coords.longitude }); 
+                    }, 
+                    err => { 
+                        removeTyping();
+                        hospCityFallback(); 
+                    }, 
+                    { timeout: 8000, maximumAge: 60000 }
+                );
+            } else {
+                hospCityFallback();
+            }
+        }
+
+        function hospCityFallback() {
+            const L = D.set.lang == 'hi';
+            pushBot(
+                '<b>📍 ' + (L ? 'नज़दीकी अस्पताल खोजें' : 'Find Nearby Hospitals') + '</b><br>' +
+                (L ? 'कृपया अपने शहर, ज़िले या पिनकोड का नाम लिखें:' : 'Type a city, district, or pincode:') + 
+                '<div class="chat-bar" style="margin-top:8px">' +
+                    '<input id="hcity" placeholder="e.g. Kanpur, Lucknow, Patna, Delhi" onkeydown="if(event.key==&quot;Enter&quot;)hospLookup({ place: this.value })" style="flex:1">' +
+                    '<button class="sm" onclick="hospLookup({ place: document.getElementById(&quot;hcity&quot;).value })">' + (L ? 'खोजें' : 'Search') + '</button>' +
+                '</div>' +
+                '<div style="margin-top:6px">' +
+                    ['Kanpur', 'Lucknow', 'Patna', 'Delhi'].map(c => `<span class="chip" onclick="hospLookup({ place: '${c}' })">${c}</span>`).join('') +
+                '</div>',
+                { html: 1 }
+            );
+        }
+
+        async function hospLookup(q) {
+            const L = D.set.lang == 'hi'; 
+            showTyping(L ? 'ओपनस्ट्रीटमैप से अस्पताल व बर्न सेंटर खोजे जा रहे हैं…' : 'Searching OpenStreetMap for nearby hospitals & burn units…');
+            try {
+                const r = await fetch(API + '/api/hospitals', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(q) 
+                });
+                if (!r.ok) throw new Error('Hospital API ' + r.status); 
+                const d = await r.json();
+                removeTyping();
+                
+                if (!d.ok) { 
+                    pushBot(d.message || (L ? 'स्थान नहीं मिला।' : 'Could not find that location.')); 
+                    return; 
+                }
+                
+                let h = '<b>' + esc(d.title || ('Hospitals near ' + (d.where || 'you'))) + '</b><br>' +
+                        '<b style="color:var(--red)">' + (d.emergency_line || '🚨 Emergency: 112 / 108') + '</b><br><br>';
+                
+                if (!d.places || !d.places.length) {
+                    h += esc(d.no_hospitals || 'No specialized burn facilities found within 30 km.');
+                } else {
+                    d.places.forEach(p => {
+                        const tags = (p.burn_unit ? ' <span class="tag" style="background:#fde8e9;color:var(--red);border-color:var(--red);font-weight:600">' + esc(d.tag_burn || 'Burn Unit') + '</span>' : '') + 
+                                     (p.major ? ' <span class="tag" style="background:#eaf2fb;color:var(--navy)">' + esc(d.tag_major || 'Government / Teaching') + '</span>' : '');
+                        h += '<b>' + esc(p.name) + '</b>' + tags + '<br>' + 
+                             esc(p.kind == 'hospital' ? (d.kind_hospital || 'Hospital') : (d.kind_clinic || 'Clinic')) + 
+                             ' · <b>' + p.distance_km + ' km</b>' + 
+                             (p.phone ? ' · 📞 <a href="tel:' + esc(p.phone) + '">' + esc(p.phone) + '</a>' : '') + 
+                             ' · <a href="' + esc(p.directions_url) + '" target="_blank" rel="noopener">🗺️ ' + esc(d.directions || 'Get Directions') + '</a><br><br>';
+                    });
+                }
+                if (d.footer) h += '<small style="color:var(--mut)">' + esc(d.footer) + '</small>';
+                pushBot(h, { html: 1 });
+            } catch (e) { 
+                removeTyping();
+                pushBot(S().map_down || (L ? 'अस्पताल खोज सेवा वर्तमान में उपलब्ध नहीं है।' : 'Hospital mapping service is currently unavailable.')); 
+            }
+        }
+
+        function parklandGo() {
+            const have = !!(caseBurns.length && caseAge && lastTbsa != null); const tbsa = have ? lastTbsa : '';
+            const fields = [{ k: 'w', l: 'Weight (kg)', t: 'number', req: 1 }];
+            if (!have) fields.push({ k: 'tbsa', l: 'TBSA %', t: 'number', req: 1 });
+            modal('Parkland formula — clinician reference', fields, { tbsa: String(tbsa) }, o => {
+                const w = +o.w, tb = have ? lastTbsa : +o.tbsa;
+                if (!(w >= 1 && w <= 300)) { toast('Enter a valid weight (1–300 kg)', 1); return; }
+                if (!(tb >= 0 && tb <= 100)) { toast('Enter TBSA between 0 and 100', 1); return; }
+                showTyping('Calculating Parkland fluid formula…');
+                fetch(API + '/api/parkland', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ weight_kg: w, tbsa: tb, age_group: caseAge || 'adult' }) 
+                })
+                .then(r => { if (!r.ok) throw 0; return r.json(); })
+                .then(d => {
+                    removeTyping();
+                    pushBot(esc(d.text || 'Error'));
+                })
+                .catch(() => {
+                    removeTyping();
+                    toast('Parkland calculation unavailable — bridge not reachable', 1);
+                });
+            });
         }
         /* ===== 10. INIT ===== */
         draw();
@@ -735,4 +1206,4 @@
     </script>
 </body>
 
-</html>
+</html> 
