@@ -348,10 +348,14 @@
             padding: 10px 13px;
             border-radius: 12px;
             margin: 8px 0;
-            white-space: pre-wrap;
+            white-space: normal;
             overflow-wrap: anywhere;
             word-break: break-word;
             line-height: 1.55
+        }
+
+        .msg:not(.rich) {
+            white-space: pre-wrap
         }
 
         .msg.u {
@@ -1119,7 +1123,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const c = $('#chat'); if (!c) return; 
             const L = D.set.lang === 'hi';
             if (chat.length) {
-                c.innerHTML = chat.map(m => `<div class="msg ${m.c}">${m.html ? m.x : esc(m.x)}</div>`).join('');
+                c.innerHTML = chat.map(m => `<div class="msg ${m.c}${m.html ? ' rich' : ''}">${m.html ? m.x : esc(m.x)}</div>`).join('');
             } else {
                 c.innerHTML = `
                     <div style="color:var(--mut);text-align:center;margin-top:60px;padding:20px">
