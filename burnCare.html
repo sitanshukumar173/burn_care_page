@@ -394,6 +394,53 @@
             max-width: 100%
         }
 
+        .assessment-report {
+            font-size: 13px;
+            line-height: 1.55
+        }
+
+        .assessment-report .report-title {
+            color: var(--navy);
+            font-size: 15px;
+            font-weight: 700;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--line)
+        }
+
+        .assessment-report .report-section {
+            color: var(--navy);
+            font-weight: 700;
+            margin-top: 12px;
+            margin-bottom: 4px
+        }
+
+        .assessment-report .report-item {
+            padding: 5px 8px;
+            margin: 3px 0;
+            background: rgba(255,255,255,.62);
+            border-left: 3px solid #9db8d3;
+            border-radius: 4px
+        }
+
+        .assessment-report .report-summary {
+            padding: 8px 10px;
+            margin: 8px 0;
+            background: #f7fafc;
+            border: 1px solid var(--line);
+            border-radius: 6px
+        }
+
+        .assessment-report .report-note {
+            color: var(--mut);
+            font-size: 12px;
+            margin-top: 10px
+        }
+
+        .assessment-report .report-gap {
+            height: 5px
+        }
+
         .msg.b a {
             overflow-wrap: anywhere
         }
@@ -1340,6 +1387,26 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             assessNow(); 
         }
 
+        function formatAssessmentReport(text) {
+            const lines = String(text || '').split(/\r?\n/);
+            const stripIcon = line => line.replace(/^[\s🔥📏🏥⚡🧪⚠️💧✋🚑🩹]+/u, '').trim();
+            const body = lines.map((raw, index) => {
+                const line = stripIcon(raw);
+                if (!line) return '<div class="report-gap"></div>';
+                if (/^•\s*/.test(line)) {
+                    return `<div class="report-item">${line.replace(/^•\s*/, '')}</div>`;
+                }
+                if (index === 0 || /^(?:<b>[^<]+<\/b>|Next:|अगला:)/i.test(line)) {
+                    return `<div class="${index === 0 ? 'report-title' : 'report-section'}">${line}</div>`;
+                }
+                if (/^(?:⚠️|I am an automated|मैं एक स्वचालित|Disclaimer|अस्वीकरण)/i.test(raw.trim())) {
+                    return `<div class="report-note">${line}</div>`;
+                }
+                return `<div class="report-summary">${line}</div>`;
+            }).join('');
+            return `<div class="assessment-report">${body}</div>`;
+        }
+
         async function assessNow() {
             const L = D.set.lang === 'hi'; 
             showTyping(L ? 'Lund & Browder TBSA व क्लिनिकल ट्राइएज की गणना हो रही है…' : 'Calculating Lund & Browder TBSA & Clinical Triage…');
@@ -1373,7 +1440,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                     const d = await r.json();
                     if (d.report || d.report_text) {
                         removeTyping();
-                        pushBot(d.report || d.report_text, { html: 1 });
+                        pushBot(formatAssessmentReport(d.report || d.report_text), { html: 1 });
                         renderAssessActions(d.tbsa || lastTbsa);
                         return;
                     }
