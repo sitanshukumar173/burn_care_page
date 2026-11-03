@@ -1571,6 +1571,44 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             }
         }
 
+        async function geocodePlace(query, lang) {
+            const original = query.trim();
+            const candidates = [
+                original,
+                original.replace(/\bzsquare\b/ig, 'Z Square Mall'),
+                original.replace(/\b(zsquare|z square)\b/ig, 'Z Square Mall'),
+                `${original} landmark`,
+                `${original}, India`
+            ].filter((value, index, list) => value && list.indexOf(value) === index);
+            for (const candidate of candidates) {
+                try {
+                    const params = new URLSearchParams({
+                        q: candidate,
+                        format: 'jsonv2',
+                        limit: '1',
+                        addressdetails: '1',
+                        countrycodes: 'in'
+                    });
+                    const response = await timedFetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+                        headers: { 'Accept': 'application/json', 'Accept-Language': lang ? 'hi' : 'en' }
+                    }, 8000);
+                    if (!response.ok) continue;
+                    const results = await response.json();
+                    const top = results && results[0];
+                    const parsedLat = top && Number(top.lat);
+                    const parsedLon = top && Number(top.lon);
+                    if (Number.isFinite(parsedLat) && Number.isFinite(parsedLon)) {
+                        return {
+                            lat: parsedLat,
+                            lon: parsedLon,
+                            name: top.display_name || candidate
+                        };
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
+
         function collectHospital(places, lat, lon, tags, plat, plon) {
             if (!tags || !Number.isFinite(plat) || !Number.isFinite(plon)) return;
             const name = tags.name || tags['name:en'];
@@ -1664,22 +1702,15 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                     lat = cachedPlace.lat;
                     lon = cachedPlace.lon;
                     placeName = cachedPlace.name;
-                } else try {
-                    const geoRes = await timedFetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1&addressdetails=1&countrycodes=in`, {
-                        headers: { 'Accept': 'application/json', 'Accept-Language': L ? 'hi' : 'en' }
-                    }, 8000);
-                    if (geoRes.ok) {
-                        const geoArr = await geoRes.json();
-                        if (geoArr && geoArr.length) {
-                            lat = parseFloat(geoArr[0].lat);
-                            lon = parseFloat(geoArr[0].lon);
-                            if (geoArr[0].display_name) {
-                                placeName = geoArr[0].display_name.split(',').slice(0, 3).join(',').trim();
-                            }
-                            placeCache.set(q.place.trim().toLowerCase(), { lat, lon, name: placeName });
-                        }
+                } else {
+                    const geocoded = await geocodePlace(placeName, L);
+                    if (geocoded) {
+                        lat = geocoded.lat;
+                        lon = geocoded.lon;
+                        placeName = geocoded.name.split(',').slice(0, 3).join(',').trim();
+                        placeCache.set(q.place.trim().toLowerCase(), { lat, lon, name: placeName });
                     }
-                } catch (e) {}
+                }
             }
 
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
