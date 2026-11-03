@@ -555,6 +555,17 @@
             font-weight: 600
         }
 
+        .assessment-report .report-status::before {
+            content: "Triage";
+            display: block;
+            color: var(--mut);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-bottom: 3px
+        }
+
         .assessment-report .report-status.alert,
         .assessment-report .report-danger {
             background: #fff3f1;
@@ -569,6 +580,12 @@
 
         .assessment-report .report-list li {
             padding: 3px 0
+        }
+
+        .assessment-report .report-danger.report-list {
+            padding: 8px 12px 8px 28px;
+            margin-top: 6px;
+            border-radius: 6px
         }
 
         .assessment-report .report-note {
@@ -1749,6 +1766,9 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const palm = palmLine ? `<p class="report-note" style="margin-top:8px">${esc(plain(palmLine))}</p>` : '';
             const safety = safetyLine ? `<p>${esc(plain(safetyLine))}</p>` : '';
             const next = nextLine ? `<p>${esc(plain(nextLine))}</p>` : '';
+            const reasonsBlock = reasonList ? `<ul class="report-list">${reasonList}</ul>` : '';
+            const findingsBlock = redList ? `<div class="report-section">${labels.findings}</div><ul class="report-list report-danger">${redList}</ul>` : '';
+            const safetyBlock = safety || next ? `<div class="report-section">${labels.safety}</div>${safety}${next}` : '';
             const description = data.description || (intro ? plain(intro) : '');
             return `<div class="assessment-report">
                 <div class="report-head">
@@ -1767,9 +1787,9 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 ${palm}
                 <div class="report-section">${labels.triage}</div>
                 <div class="report-status${levelIsAlert ? ' alert' : ''}">${esc(statusLabel)}</div>
-                ${reasonList ? `<ul class="report-list">${reasonList}</ul>` : ''}
-                ${redList ? `<div class="report-section">${labels.findings}</div><ul class="report-list report-danger">${redList}</ul>` : ''}
-                ${safety || next ? `<div class="report-section">${labels.safety}</div>${safety}${next}` : ''}
+                ${reasonsBlock}
+                ${findingsBlock}
+                ${safetyBlock}
                 ${disclaimer ? `<div class="report-note">${esc(plain(disclaimer))}</div>` : ''}
             </div>`;
         }
