@@ -1554,6 +1554,23 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             return r.json();
         }
 
+        async function reversePlace(lat, lon) {
+            try {
+                const params = new URLSearchParams({
+                    lat: String(lat), lon: String(lon), format: 'jsonv2',
+                    zoom: '18', addressdetails: '1'
+                });
+                const r = await timedFetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
+                    headers: { 'Accept': 'application/json', 'Accept-Language': D.set.lang === 'hi' ? 'hi' : 'en' }
+                }, 6000);
+                if (!r.ok) return '';
+                const data = await r.json();
+                return data.display_name || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
         function collectHospital(places, lat, lon, tags, plat, plon) {
             if (!tags || !Number.isFinite(plat) || !Number.isFinite(plon)) return;
             const name = tags.name || tags['name:en'];
@@ -1673,6 +1690,11 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 return;
             }
 
+            if (/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(placeName)) {
+                const resolvedPlace = await reversePlace(lat, lon);
+                if (resolvedPlace) placeName = resolvedPlace;
+            }
+
             const cacheKey = `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
             const cachedHospitals = hospitalCache.get(cacheKey);
             if (cachedHospitals) {
@@ -1703,7 +1725,19 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
             // Merge verified centers only when the resolved place belongs to that city.
             const pLower = (placeName || '').toLowerCase();
-            const cityKey = Object.keys(CITY_HOSPITALS).find(k => pLower.includes(k));
+            let cityKey = Object.keys(CITY_HOSPITALS).find(k => pLower.includes(k));
+            if (!cityKey) {
+                let nearestCity = null;
+                let nearestDistance = Infinity;
+                Object.entries(CITY_HOSPITALS).forEach(([key, centers]) => centers.forEach(center => {
+                    const distance = haversineDistKm(lat, lon, center.lat, center.lon);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestCity = key;
+                    }
+                }));
+                if (nearestDistance <= 50) cityKey = nearestCity;
+            }
             if (cityKey && CITY_HOSPITALS[cityKey]) {
                 CITY_HOSPITALS[cityKey].forEach(ch => {
                     const dKm = haversineDistKm(lat, lon, ch.lat, ch.lon);
