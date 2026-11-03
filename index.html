@@ -712,11 +712,11 @@
                         `<span class="chip" onclick="aiText('prevention')">🛡️ ${L ? 'बचाव' : 'Prevention'}</span>` +
                         `<span class="chip" onclick="resetCase()">🔄 ${L ? 'नया केस' : 'New Case'}</span>` +
                     `</div>` +
-                    `                    <div class="chat-bar">
-                        <button class="s" onclick="triggerPhotoUpload()" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:8px 12px;font-weight:600">📤 <span>${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span></button>
-                        <input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें, अस्पताल खोजें या फ़ोटो भेजें…' : 'Ask any burn injury question, search nearby hospitals, or upload photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">
-                        <button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>
-                    </div>` +
+                    `<div class="chat-bar">` +
+                        `<button class="s" onclick="triggerPhotoUpload()" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:8px 12px;font-weight:600">📤 <span>${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span></button>` +
+                        `<input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें, अस्पताल खोजें या फ़ोटो भेजें…' : 'Ask any burn injury question, search nearby hospitals, or upload photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">` +
+                        `<button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>` +
+                    `</div>`` +
                     `<input type="file" id="aiPh" accept="image/*" style="display:none" onchange="aiPhotoSend(this)">`
             },
             pt() {
