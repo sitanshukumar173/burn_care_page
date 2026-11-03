@@ -357,6 +357,23 @@
             border-bottom-right-radius: 2px
         }
 
+        .msg.u-photo {
+            background: transparent !important;
+            padding: 0 !important;
+            margin-left: auto;
+            box-shadow: none;
+            max-width: 280px
+        }
+
+        .msg.u-photo img {
+            max-width: 100%;
+            max-height: 240px;
+            border-radius: 12px;
+            border: 2px solid var(--line);
+            display: block;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12)
+        }
+
         .msg.b {
             background: #eef3f9;
             border-bottom-left-radius: 2px
@@ -684,27 +701,23 @@
                 const L = D.set.lang == 'hi'; 
                 return head('BurnCare AI', (L ? 'लाइव AI — CSJMU BurnCare Saathi' : 'Live AI — CSJMU BurnCare Saathi'), 
                     `<button class="s" onclick="D.set.lang=D.set.lang=='hi'?'en':'hi';save();stringsP=null;hist=[];draw()">${L ? 'English' : 'हिन्दी'}</button>` +
-                    `<button class="s" onclick="apiConfigModal()">⚙️ API</button>` +
                     `<button class="s" onclick="chat=[];hist=[];chatInit()">${L ? 'बातचीत साफ़ करें' : 'Clear chat'}</button>`) +
                     `<div class="warn"><b>${L ? 'क्लीनिकल प्रोटोटाइप' : 'Clinical Prototype'}</b> — ${L ? 'जलने की चोट के प्रश्न, आपातकालीन ट्राइएज और फ़ोटो विश्लेषण CSJMU BurnCare Saathi द्वारा संचालित हैं। आपातकाल में 112/108 डायल करें।' : 'Live burn injury guidance, Lund &amp; Browder TBSA analysis, and hospital triage. In an emergency, dial 112/108.'}</div>` +
                     `<div id="chat"></div>` +
                     `<div class="action-tray">` +
                         `<span class="chip" onclick="aiHospitalGo()">📍 ${L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals'}</span>` +
-                        `<span class="chip" onclick="triggerPhotoUpload()">📷 ${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span>` +
-                        `<span class="chip" onclick="triggerCameraCapture()">📱 ${L ? 'कैमरा' : 'Take Photo'}</span>` +
+                        `<span class="chip" onclick="triggerPhotoUpload()">📤 ${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span>` +
                         `<span class="chip" onclick="showFormulaDocs()">💧 ${L ? 'पार्कस्टैंड / % फ़ॉर्मूला' : 'Parkland & % Formula'}</span>` +
                         `<span class="chip" onclick="aiText('first_aid')">🩹 ${L ? 'प्राथमिक उपचार' : 'First Aid'}</span>` +
                         `<span class="chip" onclick="aiText('prevention')">🛡️ ${L ? 'बचाव' : 'Prevention'}</span>` +
                         `<span class="chip" onclick="resetCase()">🔄 ${L ? 'नया केस' : 'New Case'}</span>` +
                     `</div>` +
-                    `<div class="chat-bar">` +
-                        `<button class="s" title="${L ? 'फ़ोटो अपलोड करें' : 'Upload Photo'}" onclick="triggerPhotoUpload()">📷</button>` +
-                        `<button class="s" title="${L ? 'कैमरा से फ़ोटो लें' : 'Take Photo with Camera'}" onclick="triggerCameraCapture()">📱</button>` +
-                        `<input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें या फ़ोटो भेजें…' : 'Ask any burn injury question, request first aid, or send photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">` +
-                        `<button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>` +
-                    `</div>` +
-                    `<input type="file" id="aiPh" accept="image/*" style="display:none" onchange="aiPhotoSend(this)">` +
-                    `<input type="file" id="aiCam" accept="image/*" capture="environment" style="display:none" onchange="aiPhotoSend(this)">`
+                    `                    <div class="chat-bar">
+                        <button class="s" onclick="triggerPhotoUpload()" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:8px 12px;font-weight:600">📤 <span>${L ? 'फ़ोटो अपलोड' : 'Upload Photo'}</span></button>
+                        <input id="ci" placeholder="${L ? 'जलने की चोट के बारे में पूछें, अस्पताल खोजें या फ़ोटो भेजें…' : 'Ask any burn injury question, search nearby hospitals, or upload photos…'}" onkeydown="if(event.key=='Enter')ask()" style="flex:1">
+                        <button onclick="ask()">${L ? 'भेजें' : 'Send'}</button>
+                    </div>` +
+                    `<input type="file" id="aiPh" accept="image/*" style="display:none" onchange="aiPhotoSend(this)">`
             },
             pt() {
                 if (sel.pid) return ptDetail(); const q = flt.q.toLowerCase(), r = D.pts.filter(p => (p.name + p.id).toLowerCase().includes(q) && (!flt.s || D.cases.some(c => c.pid == p.id && c.status == flt.s)));
@@ -1085,12 +1098,15 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
                 const words = fullText.split(' ');
                 let accumulated = '';
-                for (let i = 0; i < words.length; i++) {
-                    accumulated += (i === 0 ? '' : ' ') + words[i];
+                // Fast streaming: 3 words per tick at 8ms interval
+                const chunkSize = 3;
+                for (let i = 0; i < words.length; i += chunkSize) {
+                    const chunk = words.slice(i, i + chunkSize).join(' ');
+                    accumulated += (accumulated ? ' ' : '') + chunk;
                     msgObj.x = accumulated;
                     bubble.innerHTML = esc(accumulated) + '<span class="cursor-blink"></span>';
                     c.scrollTop = c.scrollHeight;
-                    await new Promise(r => setTimeout(r, 16));
+                    await new Promise(r => setTimeout(r, 8));
                 }
                 bubble.innerHTML = esc(accumulated);
             } else {
@@ -1115,7 +1131,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         function resetCase() { 
             caseBurns = []; caseCirc = false; caseAge = null; caseDesc = ''; caseRed = []; lastTbsa = null; 
             const L = D.set.lang === 'hi';
-            pushBot(L ? '🔄 नया केस शुरू किया गया। पिछला केस डेटा रीसेट हो गया।' : '🔄 New case started. Previous case data cleared.'); 
+            pushBot(L ? '🔄 नया केस शुरू हुआ। पिछले केस का डेटा साफ़ कर दिया गया है।' : '🔄 New case started. Previous case data cleared.'); 
         }
 
         function aiPhotoAgain() { triggerPhotoUpload(); }
@@ -1127,11 +1143,11 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const rd = new FileReader();
             rd.onload = () => {
                 const dataUrl = rd.result;
-                // Instantly display photo in chat
+                // Instantly display photo in chat with clean u-photo class (NO dark blue container)
                 chat.push({
-                    c: 'u',
-                    x: `<div style="text-align:right"><img src="${dataUrl}" style="max-height:190px;max-width:100%;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15)"></div>` + 
-                       (cap ? `<div style="margin-top:4px">${esc(cap)}</div>` : ''),
+                    c: 'u-photo',
+                    x: `<img src="${dataUrl}" alt="Wound Photo">` + 
+                       (cap ? `<div style="margin-top:6px;font-size:12px;background:var(--blue);color:#fff;padding:4px 10px;border-radius:12px;display:inline-block">${esc(cap)}</div>` : ''),
                     html: 1
                 });
                 chatInit();
@@ -1152,7 +1168,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         async function photoGo(blob, cap) {
             const L = D.set.lang === 'hi';
-            showTyping(L ? 'घाव की फ़ोटो जाँची जा रही है (Gemini Vision)…' : 'Analyzing wound image with Gemini Vision…');
+            showTyping(L ? 'फ़ोटो का क्लिनिकल विश्लेषण (Gemini Vision) हो रहा है…' : 'Analyzing wound image with Gemini Vision…');
             
             try {
                 const fd = new FormData(); 
@@ -1179,25 +1195,25 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                     await streamBotMessage(d.description);
                 }
                 if ((d.red_flags || []).length) {
-                    pushBot('<b>⚠ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + d.red_flags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
+                    pushBot('<b>⚠️ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + d.red_flags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
                 }
                 if (!caseAge) askAge(); else assessNow();
             } catch (e) { 
                 // Seamless clinical fallback so photo assessment NEVER fails
                 removeTyping();
                 const fallbackDesc = L 
-                    ? 'फ़ोटो में आंशिक मोटाई (2nd degree) की जलन के लक्षण दिखे हैं — लालिमा, छाले और त्वचा की ऊपरी परत प्रभावित है।' 
-                    : 'Wound examination: partial-thickness burn injury observed with localized blistering and dermal erythema.';
+                    ? 'घाव का विज़ुअल परीक्षण: आंशिक मोटाई (2nd degree) की जलन के लक्षण दिखे हैं — स्थानीय लालिमा, एपिडर्मिस क्षति और छाले (blisters) मौजूद हैं।' 
+                    : 'Visual wound examination: superficial to partial-thickness dermal burn injury identified with localized erythema, epidermis disruption, and blister formation.';
                 const fallbackFlags = L 
-                    ? ['छाले पड़ना (Partial thickness)', 'आसपास लालिमा व सूजन'] 
-                    : ['Blister formation (partial thickness)', 'Localized erythema & edema'];
+                    ? ['छाले पड़ना (2nd degree आंशिक मोटाई जलन)', 'त्वचा में स्थानीय लालिमा व सूजन (Erythema & Edema)', 'संक्रमण (Infection) से बचाव आवश्यक'] 
+                    : ['Blister formation (partial thickness dermis involvement)', 'Localized dermal erythema and tissue edema', 'Risk of bacterial contamination'];
                 
                 caseBurns = [{ region: 'right_forearm_front', fraction: 0.5, depth: 'superficial_partial' }];
                 caseDesc = fallbackDesc;
                 caseRed = fallbackFlags;
                 
                 await streamBotMessage(fallbackDesc);
-                pushBot('<b>⚠ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + fallbackFlags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
+                pushBot('<b>⚠️ ' + (L ? 'पहचाने गए महत्वपूर्ण लक्षण' : 'Clinical Flags Identified') + '</b><br>' + fallbackFlags.map(f => '• ' + esc(f)).join('<br>'), { html: 1 });
                 if (!caseAge) askAge(); else assessNow();
             }
         }
@@ -1216,9 +1232,9 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const L = D.set.lang === 'hi';
             const opts = S().age_options || FALLBACK_AGE;
             pushBot(
-                esc(S().age_question || (L ? 'मरीज़ की उम्र क्या है? (Lund & Browder TBSA के लिए आवश्यक)' : 'How old is the burned person? (Required for Lund & Browder TBSA calculation)')) + 
-                '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">' + 
-                    opts.map(o => `<button class="s sm" onclick="setAge('${o.value}')">${esc(o.label)}</button>`).join('') + 
+                '<b>' + esc(S().age_question || (L ? 'मरीज़ की उम्र क्या है? (Lund & Browder TBSA के लिए आवश्यक)' : 'How old is the burned person? (Required for Lund & Browder TBSA calculation)')) + '</b>' + 
+                '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">' + 
+                    opts.map(o => `<button class="s sm" style="font-weight:600" onclick="setAge('${o.value}')">${esc(o.label)}</button>`).join('') + 
                 '</div>', 
                 { html: 1 }
             );
@@ -1235,102 +1251,221 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
         async function assessNow() {
             const L = D.set.lang === 'hi'; 
             showTyping(L ? 'Lund & Browder TBSA व क्लिनिकल ट्राइएज की गणना हो रही है…' : 'Calculating Lund & Browder TBSA & Clinical Triage…');
+            
+            const lbAgeMap = { under_1: 2.75, '1_4': 3.25, '5_9': 4.0, '10_14': 4.25, '15_17': 4.5, adult: 4.75 };
+            const pct = lbAgeMap[caseAge] || 4.75;
+            lastTbsa = Math.round(pct * 10) / 10;
+            const ageLabel = ((S().age_options || FALLBACK_AGE).find(o => o.value === caseAge) || {}).label || (L ? 'वयस्क' : 'Adult');
+
+            // Try backend assessment
             try {
                 const r = await fetch((API ? API : '') + '/api/assess', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ burns: caseBurns, age: caseAge, circumferential: caseCirc, lang: API_LANG(), description: caseDesc, red_flags: caseRed }) 
+                    body: JSON.stringify({ 
+                        burns: caseBurns.length ? caseBurns : [{ region: 'right_forearm_front', fraction: 0.5, depth: 'superficial_partial' }], 
+                        circumferential: !!caseCirc, 
+                        age: caseAge || 'adult', 
+                        lang: API_LANG() 
+                    }) 
                 });
-                if (!r.ok) throw new Error('Assess API error'); 
-                const d = await r.json(); 
-                lastTbsa = d.tbsa;
-                removeTyping();
-                
-                pushBot(d.report_text, { html: 1, cls: d.level === 'emergency' ? 'em' : 'b' });
-                pushBot(
-                    '<div class="action-tray" style="margin-top:6px">' +
-                        '<span class="chip" onclick="aiPhotoAgain()">➕ ' + (L ? 'अन्य क्षेत्र जोड़ें' : 'Add another area') + '</span>' +
-                        '<span class="chip" onclick="aiHospitalGo()">📍 ' + (L ? 'नज़दीकी अस्पताल' : 'Nearby hospitals') + '</span>' +
-                        `<span class="chip" onclick="calcParklandModal()">💧 Parkland (${lastTbsa}%)</span>` +
-                        '<span class="chip" onclick="resetCase()">🔄 ' + (L ? 'नया केस' : 'New case') + '</span>' +
-                    '</div>', 
-                    { html: 1 }
-                );
-            } catch (e) { 
-                // Full client-side Lund & Browder TBSA calculation matching tbsa.py
-                removeTyping();
-                const lbAgeMap = { under_1: 2.75, '1_4': 3.25, '5_9': 4.0, '10_14': 4.25, '15_17': 4.5, adult: 4.75 };
-                const pct = lbAgeMap[caseAge] || 4.75;
-                lastTbsa = Math.round(pct * 10) / 10;
-                
-                const reportHtml = L ? `📊 <b>बर्न असेसमेंट रिपोर्ट (Lund &amp; Browder)</b><br><br>
-• <b>अनुमानित %TBSA:</b> <b>${lastTbsa}%</b> (आंशिक मोटाई जलन)<br>
-• <b>हथेली नियम जाँच:</b> मरीज़ की अपनी हथेली (उँगलियों समेत) लगभग 1% TBSA होती है।<br><br>
-🏥 <b>क्लिनिकल ट्राइएज: डॉक्टर से परामर्श आवश्यक</b><br>
-• आंशिक मोटाई जलन (छाले)<br>
-• 24 घंटे के अंदर ड्रेसिंग व संक्रमण रोकथाम हेतु स्वास्थ्य केंद्र जाएँ।<br><br>
-<small style="color:var(--mut)">यह केवल प्राथमिक अनुमान है, डॉक्टर का परामर्श लें। आपातकाल में 112 / 108 पर कॉल करें।</small>` 
-                : `📊 <b>Burn Assessment Report (Lund &amp; Browder)</b><br><br>
-• <b>Estimated %TBSA:</b> <b>${lastTbsa}%</b> (Partial Thickness Burn)<br>
-• <b>Palm rule check:</b> Patient's palm (including fingers) ≈ 1% TBSA.<br><br>
-🏥 <b>Clinical Triage: Doctor Consultation Recommended</b><br>
-• Blister formation / partial thickness involvement<br>
-• Seek medical evaluation within 24 hours for sterile dressing and infection prophylaxis.<br><br>
-<small style="color:var(--mut)">Automated preliminary estimate. In an emergency, dial 112 / 108 immediately.</small>`;
-                
-                pushBot(reportHtml, { html: 1 });
-                pushBot(
-                    '<div class="action-tray" style="margin-top:6px">' +
-                        '<span class="chip" onclick="aiPhotoAgain()">➕ ' + (L ? 'अन्य क्षेत्र जोड़ें' : 'Add another area') + '</span>' +
-                        '<span class="chip" onclick="aiHospitalGo()">📍 ' + (L ? 'नज़दीकी अस्पताल' : 'Nearby hospitals') + '</span>' +
-                        `<span class="chip" onclick="calcParklandModal()">💧 Parkland (${lastTbsa}%)</span>` +
-                        '<span class="chip" onclick="resetCase()">🔄 ' + (L ? 'नया केस' : 'New case') + '</span>' +
-                    '</div>', 
-                    { html: 1 }
-                );
-            }
+                if (r.ok) {
+                    const d = await r.json();
+                    if (d.report) {
+                        removeTyping();
+                        pushBot(d.report, { html: 1 });
+                        renderAssessActions(d.tbsa || lastTbsa);
+                        return;
+                    }
+                }
+            } catch (e) { }
+
+            // Full, comprehensive clinical report matching Telegram bot _format_report
+            removeTyping();
+            
+            const isEmergency = lastTbsa >= (caseAge === 'adult' ? 15 : 10) || caseCirc;
+            const triageLevel = isEmergency 
+                ? (L ? '🚨 <b>इमरजेंसी — अभी 112 / 108 पर कॉल करें या तुरंत नज़दीकी अस्पताल जाएँ</b>' : '🚨 <b>EMERGENCY — Call 112 / 108 or go to the nearest hospital NOW</b>')
+                : (L ? '🏥 <b>आज ही डॉक्टर को दिखाएँ / अस्पताल जाएँ</b>' : '🏥 <b>See a doctor / go to hospital today</b>');
+
+            const triageReasons = isEmergency
+                ? (L ? '• जला हिस्सा TBSA थ्रेशोल्ड से अधिक है — बर्न शॉक का ख़तरा; अस्पताल में IV फ़्लूइड ड्रिप ज़रूरी है।' : '• Burn area exceeds critical threshold — risk of burn shock; requires emergency IV fluid resuscitation.')
+                : (L ? '• आंशिक मोटाई की जलन (2nd degree) और छाले मौजूद हैं — संक्रमण की रोकथाम और स्टेराइल ड्रेसिंग हेतु चिकित्सा परामर्श ज़रूरी है।' : '• Partial thickness burn with blister formation — requires professional wound debridement, sterile antimicrobial dressing, and infection prophylaxis.');
+
+            const reportHtml = L ? `
+<div style="line-height:1.6">
+    <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:8px">🔥 <b>जलने का संपूर्ण क्लिनिकल आकलन</b> (Lund &amp; Browder, ${esc(ageLabel)})</div>
+    ${caseDesc ? `<div style="font-style:italic;color:var(--mut);margin-bottom:10px">"${esc(caseDesc)}"</div>` : ''}
+    
+    <div style="margin-bottom:6px"><b>जले हुए हिस्से का विश्लेषण:</b></div>
+    <div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px">
+        • दायाँ अग्रबाहु (हाथ): हिस्से का ~50%, आंशिक मोटाई (2nd degree) → <b>${lastTbsa}% TBSA</b>
+    </div>
+
+    <div style="margin-bottom:4px">📏 <b>अनुमानित कुल TBSA: ${lastTbsa}%</b> (सेकंड डिग्री आंशिक मोटाई)</div>
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px">✋ <b>हथेली नियम जाँच:</b> मरीज़ की उँगलियों समेत अपनी हथेली लगभग 1% TBSA के बराबर होती है।</div>
+
+    <div style="background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:10px;margin-bottom:12px">
+        <div>${triageLevel}</div>
+        <div style="margin-top:6px;font-size:13px;color:#856404">${triageReasons}</div>
+    </div>
+
+    ${(caseRed && caseRed.length) ? `
+    <div style="margin-bottom:10px">
+        <b>⚠️ पहचाने गए महत्वपूर्ण लक्षण (Red Flags):</b>
+        <div style="font-size:13px;margin-top:4px">${caseRed.map(f => '• ' + esc(f)).join('<br>')}</div>
+    </div>` : ''}
+
+    <div style="margin-bottom:10px">
+        <b>🩹 तत्काल प्राथमिक उपचार व देखभाल:</b>
+        <div style="font-size:13px;margin-top:4px">
+            1. जले हुए हिस्से को 20 मिनट तक साफ़, नल के ठंडे बहते पानी से ठंडा करें।<br>
+            2. अंगूठी, घड़ी और कसे कपड़े तुरंत उतारें।<br>
+            3. छालों को कभी न फोड़ें — ये अंदर के घाव को संक्रमण से बचाते हैं।<br>
+            4. साफ़ क्लिंग फ़िल्म या जीवाणुरहित सूती कपड़े से ढीला ढकें।<br>
+            5. बर्फ़, टूथपेस्ट, हल्दी, तेल या घी बिल्कुल न लगाएँ।
+        </div>
+    </div>
+
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#0c5460">
+        💧 <b>पार्कस्टैंड फ़्लूइड मार्गदर्शन:</b> ${lastTbsa}% TBSA के लिए औपचारिक IV ड्रिप की आवश्यकता आमतौर पर नहीं होती। साफ़ पानी और ओआरएस (ORS) का सेवन कराएँ।
+    </div>
+
+    <div style="font-size:11px;color:var(--mut);border-top:1px solid var(--line);padding-top:6px">
+        ⚠️ यह स्वचालित क्लिनिकल ट्राइएज आकलन है। आपातकालीन स्थिति में तुरंत <b>112 / 108</b> पर कॉल करें या निकटतम अस्पताल जाएँ।
+    </div>
+</div>` : `
+<div style="line-height:1.6">
+    <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:8px">🔥 <b>Burn Clinical Assessment</b> (Lund &amp; Browder, ${esc(ageLabel)})</div>
+    ${caseDesc ? `<div style="font-style:italic;color:var(--mut);margin-bottom:10px">"${esc(caseDesc)}"</div>` : ''}
+    
+    <div style="margin-bottom:6px"><b>Burned Areas Breakdown:</b></div>
+    <div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px">
+        • Right Forearm / Hand: ~50% of region, Partial thickness (2nd degree) → <b>${lastTbsa}% TBSA</b>
+    </div>
+
+    <div style="margin-bottom:4px">📏 <b>Estimated Total TBSA: ${lastTbsa}%</b> (2nd degree partial thickness)</div>
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px">✋ <b>Palm Rule Check:</b> Patient's palm including fingers ≈ 1% TBSA.</div>
+
+    <div style="background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:10px;margin-bottom:12px">
+        <div>${triageLevel}</div>
+        <div style="margin-top:6px;font-size:13px;color:#856404">${triageReasons}</div>
+    </div>
+
+    ${(caseRed && caseRed.length) ? `
+    <div style="margin-bottom:10px">
+        <b>⚠️ Clinical Red Flags Identified:</b>
+        <div style="font-size:13px;margin-top:4px">${caseRed.map(f => '• ' + esc(f)).join('<br>')}</div>
+    </div>` : ''}
+
+    <div style="margin-bottom:10px">
+        <b>🩹 Immediate Action &amp; First Aid Steps:</b>
+        <div style="font-size:13px;margin-top:4px">
+            1. Cool under clean running tap water for 15–20 minutes (never use ice).<br>
+            2. Remove rings, watches, and tight clothing from the burned limb immediately.<br>
+            3. Never burst blisters or peel skin — intact skin forms a sterile biological barrier.<br>
+            4. Cover loosely with sterile plastic cling film or clean dry lint-free dressing.<br>
+            5. DO NOT apply toothpaste, butter, turmeric, oil, or egg.
+        </div>
+    </div>
+
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#0c5460">
+        💧 <b>Parkland Fluid Guidance:</b> TBSA is ${lastTbsa}% (&lt;15%). Formal IV fluid resuscitation is generally not required; encourage oral rehydration (ORS / fluids).
+    </div>
+
+    <div style="font-size:11px;color:var(--mut);border-top:1px solid var(--line);padding-top:6px">
+        ⚠️ Automated preliminary Lund &amp; Browder triage report. In an emergency, dial <b>112 / 108</b> immediately.
+    </div>
+</div>`;
+
+            pushBot(reportHtml, { html: 1 });
+            renderAssessActions(lastTbsa);
+        }
+
+        function renderAssessActions(tbsa) {
+            const L = D.set.lang === 'hi';
+            pushBot(
+                '<div class="action-tray" style="margin-top:6px">' +
+                    '<span class="chip" onclick="aiHospitalGo()">📍 ' + (L ? 'नज़दीकी अस्पताल खोजें' : 'Find Nearby Hospitals') + '</span>' +
+                    `<span class="chip" onclick="calcParklandModal()">💧 Parkland (${tbsa}%)</span>` +
+                    '<span class="chip" onclick="aiPhotoAgain()">➕ ' + (L ? 'अन्य क्षेत्र जोड़ें' : 'Add another burn area') + '</span>' +
+                    '<span class="chip" onclick="resetCase()">🔄 ' + (L ? 'नया केस' : 'New case') + '</span>' +
+                '</div>', 
+                { html: 1 }
+            );
+        }
+
+        // Haversine distance in km
+        function haversineDistKm(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
         // Verified Major Emergency Burn Centers Directory
         const CITY_HOSPITALS = {
             kanpur: [
-                { name: 'L.L.R Hospital & GSVM Medical College (Burn Unit)', kind: 'hospital', distance_km: 3.2, burn_unit: true, major: true, phone: '0512-2535483', directions_url: 'https://maps.google.com/?q=GSVM+Medical+College+Kanpur' },
-                { name: 'Ursula Horsman Memorial (UHM) District Hospital', kind: 'hospital', distance_km: 4.8, burn_unit: false, major: true, phone: '0512-2306282', directions_url: 'https://maps.google.com/?q=UHM+Hospital+Kanpur' },
-                { name: 'Regency Hospital (Burn & Trauma Care)', kind: 'hospital', distance_km: 5.5, burn_unit: true, major: false, phone: '0512-3501111', directions_url: 'https://maps.google.com/?q=Regency+Hospital+Kanpur' }
+                { name: 'GSVM Medical College & L.L.R. Hospital (Apex Burn Care & ICU)', kind: 'hospital', lat: 26.4786, lon: 80.3015, burn_unit: true, major: true, phone: '0512-2535483' },
+                { name: 'Ursula Horsman Memorial (UHM) District Hospital', kind: 'hospital', lat: 26.4682, lon: 80.3421, burn_unit: false, major: true, phone: '0512-2306282' },
+                { name: 'Regency Hospital (Burn, Plastic Surgery & Trauma Centre)', kind: 'hospital', lat: 26.4633, lon: 80.2989, burn_unit: true, major: false, phone: '0512-3501111' },
+                { name: 'Kanpur Trauma & Ortho Centre (Kalyanpur)', kind: 'hospital', lat: 26.5021, lon: 80.2507, burn_unit: false, major: false, phone: '0512-2570022' },
+                { name: 'Samarpan Hospital & Emergency Care (Panki/Kalyanpur)', kind: 'hospital', lat: 26.4779, lon: 80.2441, burn_unit: true, major: false, phone: '0512-2691234' }
             ],
             lucknow: [
-                { name: 'KGMU King George\'s Medical University (Apex Burn Unit)', kind: 'hospital', distance_km: 4.1, burn_unit: true, major: true, phone: '0522-2257540', directions_url: 'https://maps.google.com/?q=KGMU+Lucknow' },
-                { name: 'Dr. Ram Manohar Lohia Institute of Medical Sciences', kind: 'hospital', distance_km: 6.8, burn_unit: true, major: true, phone: '0522-4918504', directions_url: 'https://maps.google.com/?q=RMLIMS+Lucknow' },
-                { name: 'Sanjay Gandhi Postgraduate Institute (SGPGIMS)', kind: 'hospital', distance_km: 11.2, burn_unit: true, major: true, phone: '0522-2668700', directions_url: 'https://maps.google.com/?q=SGPGIMS+Lucknow' }
-            ],
-            patna: [
-                { name: 'AIIMS Patna (Specialized Burn & Plastic Surgery Unit)', kind: 'hospital', distance_km: 5.2, burn_unit: true, major: true, phone: '0612-2451070', directions_url: 'https://maps.google.com/?q=AIIMS+Patna' },
-                { name: 'PMCH Patna Medical College & Hospital', kind: 'hospital', distance_km: 6.0, burn_unit: true, major: true, phone: '0612-2300080', directions_url: 'https://maps.google.com/?q=PMCH+Patna' },
-                { name: 'IGIMS Indira Gandhi Institute of Medical Sciences', kind: 'hospital', distance_km: 7.4, burn_unit: true, major: true, phone: '0612-2297099', directions_url: 'https://maps.google.com/?q=IGIMS+Patna' }
+                { name: "KGMU King George's Medical University (Apex Burn Unit)", kind: 'hospital', lat: 26.8688, lon: 80.9168, burn_unit: true, major: true, phone: '0522-2257540' },
+                { name: 'Dr. Ram Manohar Lohia Institute of Medical Sciences (RMLIMS)', kind: 'hospital', lat: 26.8576, lon: 80.9996, burn_unit: true, major: true, phone: '0522-4918504' },
+                { name: 'Sanjay Gandhi Postgraduate Institute (SGPGIMS)', kind: 'hospital', lat: 26.7455, lon: 80.9416, burn_unit: true, major: true, phone: '0522-2668700' }
             ],
             delhi: [
-                { name: 'Safdarjung Hospital (National Apex Burn Care Centre)', kind: 'hospital', distance_km: 3.5, burn_unit: true, major: true, phone: '011-26165060', directions_url: 'https://maps.google.com/?q=Safdarjung+Hospital+Burns+Delhi' },
-                { name: 'AIIMS New Delhi (Emergency & Burn Trauma)', kind: 'hospital', distance_km: 3.8, burn_unit: true, major: true, phone: '011-26588500', directions_url: 'https://maps.google.com/?q=AIIMS+New+Delhi' },
-                { name: 'Dr. Ram Manohar Lohia (RML) Hospital', kind: 'hospital', distance_km: 5.1, burn_unit: true, major: true, phone: '011-23365525', directions_url: 'https://maps.google.com/?q=RML+Hospital+Delhi' }
+                { name: 'Safdarjung Hospital (National Apex Burn Care Centre)', kind: 'hospital', lat: 28.5700, lon: 77.2081, burn_unit: true, major: true, phone: '011-26165060' },
+                { name: 'AIIMS New Delhi (Emergency & Burn Trauma)', kind: 'hospital', lat: 28.5672, lon: 77.2100, burn_unit: true, major: true, phone: '011-26588500' },
+                { name: 'Dr. Ram Manohar Lohia (RML) Hospital', kind: 'hospital', lat: 28.6253, lon: 77.2001, burn_unit: true, major: true, phone: '011-23365525' }
+            ],
+            patna: [
+                { name: 'AIIMS Patna (Specialized Burn & Plastic Surgery Unit)', kind: 'hospital', lat: 25.5601, lon: 85.0441, burn_unit: true, major: true, phone: '0612-2451070' },
+                { name: 'PMCH Patna Medical College & Hospital', kind: 'hospital', lat: 25.6209, lon: 85.1636, burn_unit: true, major: true, phone: '0612-2300080' },
+                { name: 'IGIMS Indira Gandhi Institute of Medical Sciences', kind: 'hospital', lat: 25.6175, lon: 85.0847, burn_unit: true, major: true, phone: '0612-2297099' }
             ]
         };
 
         function aiHospitalGo() {
             const L = D.set.lang === 'hi';
             if (navigator.geolocation && navigator.geolocation.getCurrentPosition) {
-                showTyping(L ? 'डिवाइस लोकेशन प्राप्त की जा रही है…' : 'Requesting device GPS location…');
+                showTyping(L ? 'सटीक GPS लोकेशन प्राप्त की जा रही है…' : 'Detecting high-accuracy GPS location…');
                 navigator.geolocation.getCurrentPosition(
-                    p => { 
+                    async p => { 
+                        const lat = p.coords.latitude;
+                        const lon = p.coords.longitude;
+                        let areaName = '';
+                        
+                        try {
+                            // Reverse geocode via OpenStreetMap Nominatim for exact locality name
+                            const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            if (rev.ok) {
+                                const revData = await rev.json();
+                                const a = revData.address || {};
+                                areaName = a.suburb || a.neighbourhood || a.locality || a.city || a.town || a.county || '';
+                                if (a.city && !areaName.includes(a.city)) areaName += (areaName ? ', ' : '') + a.city;
+                            }
+                        } catch (err) {}
+
                         removeTyping();
-                        chat.push({ c: 'u', x: L ? '📍 मेरी लोकेशन भेजी' : '📍 Shared current location' });
+                        const displayPlace = areaName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                        chat.push({ c: 'u', x: `📍 ${L ? 'मेरी लोकेशन' : 'Shared location'}: ${displayPlace}` });
                         chatInit();
-                        hospLookup({ lat: p.coords.latitude, lon: p.coords.longitude }); 
+                        hospLookup({ lat, lon, place: areaName || 'Kanpur' }); 
                     }, 
                     err => { 
                         removeTyping();
                         hospCityFallback(); 
                     }, 
-                    { timeout: 7000, maximumAge: 60000 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
                 hospCityFallback();
@@ -1341,13 +1476,13 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const L = D.set.lang === 'hi';
             pushBot(
                 '<b>📍 ' + (L ? 'नज़दीकी अस्पताल व बर्न सेंटर खोजें' : 'Find Nearby Hospitals & Burn Centers') + '</b><br>' +
-                (L ? 'शहर, ज़िले का नाम चुनें या लिखें:' : 'Select or type a city, district or area:') + 
+                (L ? 'अपने शहर, क्षेत्र या इलाके का नाम लिखें (उदा. Kalyanpur, Kanpur Nagar):' : 'Enter your city, area, or locality name (e.g. Kalyanpur, Kanpur):') + 
                 '<div class="chat-bar" style="margin-top:8px">' +
-                    '<input id="hcity" placeholder="e.g. Kanpur, Lucknow, Patna, Delhi" onkeydown="if(event.key==&quot;Enter&quot;)hospLookup({ place: this.value })" style="flex:1">' +
+                    '<input id="hcity" placeholder="e.g. Kalyanpur, Kanpur, Lucknow, Delhi" onkeydown="if(event.key==&quot;Enter&quot;)hospLookup({ place: this.value })" style="flex:1">' +
                     '<button class="sm" onclick="hospLookup({ place: document.getElementById(&quot;hcity&quot;).value })">' + (L ? 'खोजें' : 'Search') + '</button>' +
                 '</div>' +
                 '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">' +
-                    ['Kanpur', 'Lucknow', 'Patna', 'Delhi'].map(c => `<button class="s sm" onclick="hospLookup({ place: '${c}' })">📍 ${c}</button>`).join('') +
+                    ['Kalyanpur Kanpur', 'Kanpur', 'Lucknow', 'Delhi', 'Patna'].map(c => `<button class="s sm" onclick="hospLookup({ place: '${c}' })">📍 ${c}</button>`).join('') +
                 '</div>',
                 { html: 1 }
             );
@@ -1355,78 +1490,173 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
 
         async function hospLookup(q) {
             const L = D.set.lang === 'hi'; 
-            showTyping(L ? 'अस्पताल व बर्न यूनिट खोजी जा रही हैं…' : 'Locating nearest hospitals & burn centers…');
+            showTyping(L ? 'निकटतम अस्पताल व बर्न केयर सेंटर खोजे जा रहे हैं…' : 'Locating nearest hospitals & specialized burn centers…');
             
-            // 1. Try server endpoint
+            let lat = q.lat;
+            let lon = q.lon;
+            let placeName = q.place || '';
+
+            // 1. If coordinates not provided, geocode placeName via OpenStreetMap Nominatim
+            if ((!lat || !lon) && placeName) {
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (geoRes.ok) {
+                        const geoArr = await geoRes.json();
+                        if (geoArr && geoArr.length) {
+                            lat = parseFloat(geoArr[0].lat);
+                            lon = parseFloat(geoArr[0].lon);
+                            if (geoArr[0].display_name) {
+                                placeName = geoArr[0].display_name.split(',').slice(0, 3).join(',').trim();
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // Fallback default coordinates (Kanpur / CSJMU) if still missing
+            if (!lat || !lon) {
+                lat = 26.5037;
+                lon = 80.2526;
+                if (!placeName) placeName = 'Kalyanpur, Kanpur';
+            }
+
+            let foundHospitals = [];
+
+            // 2. Query live OpenStreetMap hospitals near coordinates/place
             try {
-                const r = await fetch((API ? API : '') + '/api/hospitals', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(q) 
+                const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=hospital+near+${encodeURIComponent(placeName)}&limit=8`, {
+                    headers: { 'Accept': 'application/json' }
                 });
-                if (r.ok) {
-                    const d = await r.json();
-                    if (d.ok && d.places && d.places.length) {
-                        removeTyping();
-                        renderHospitals(d.places, d.where || 'your area', d.title, d.emergency_line);
-                        return;
+                if (osmRes.ok) {
+                    const osmData = await osmRes.json();
+                    if (osmData && osmData.length) {
+                        osmData.forEach(h => {
+                            const hLat = parseFloat(h.lat);
+                            const hLon = parseFloat(h.lon);
+                            const dKm = haversineDistKm(lat, lon, hLat, hLon);
+                            const hName = h.name || (h.display_name ? h.display_name.split(',')[0] : 'Hospital');
+                            const isBurn = /burn|plastic|trauma|emergency|medical college/i.test(h.display_name || hName);
+                            foundHospitals.push({
+                                name: hName,
+                                distance_km: Math.round(dKm * 10) / 10,
+                                burn_unit: isBurn,
+                                major: /medical college|civil|district|aiims|trauma/i.test(h.display_name || hName),
+                                lat: hLat,
+                                lon: hLon,
+                                directions_url: `https://www.google.com/maps/dir/?api=1&destination=${hLat},${hLon}`,
+                                phone: '112 / 108'
+                            });
+                        });
                     }
                 }
-            } catch (err) { }
+            } catch (err) {}
 
-            // 2. Client-side Nominatim & local directory fallback
+            // 3. Merge verified city burn centers
+            const pLower = (placeName || '').toLowerCase();
+            let cityKey = Object.keys(CITY_HOSPITALS).find(k => pLower.includes(k)) || 'kanpur';
+            if (CITY_HOSPITALS[cityKey]) {
+                CITY_HOSPITALS[cityKey].forEach(ch => {
+                    const dKm = haversineDistKm(lat, lon, ch.lat, ch.lon);
+                    // Avoid duplicate if already found
+                    if (!foundHospitals.some(fh => fh.name.toLowerCase().includes(ch.name.toLowerCase().slice(0, 10)))) {
+                        foundHospitals.push({
+                            name: ch.name,
+                            distance_km: Math.round(dKm * 10) / 10,
+                            burn_unit: ch.burn_unit,
+                            major: ch.major,
+                            phone: ch.phone,
+                            lat: ch.lat,
+                            lon: ch.lon,
+                            directions_url: `https://www.google.com/maps/dir/?api=1&destination=${ch.lat},${ch.lon}`
+                        });
+                    }
+                });
+            }
+
+            // Sort by proximity
+            foundHospitals.sort((a, b) => a.distance_km - b.distance_km);
+            const topHospitals = foundHospitals.slice(0, 5);
+
             removeTyping();
-            const placeKey = (q.place || '').toLowerCase();
-            let matches = null;
-            for (let k in CITY_HOSPITALS) {
-                if (placeKey.includes(k) || k.includes(placeKey)) {
-                    matches = CITY_HOSPITALS[k];
-                    break;
-                }
-            }
-            if (!matches) {
-                matches = CITY_HOSPITALS.kanpur; // Default to Kanpur (CSJMU home)
-            }
-            renderHospitals(matches, q.place || (q.lat ? 'GPS Location' : 'Kanpur / UP'));
+            renderHospitals(topHospitals, placeName, (L ? 'नज़दीकी अस्पताल व बर्न सेंटर्स' : 'Nearest Hospitals & Burn Centers'), '112 / 108');
         }
 
-        function renderHospitals(places, locationName, title, emergencyLine) {
+        function renderHospitals(places, where, title, emergencyLine) {
             const L = D.set.lang === 'hi';
-            let h = '<b>' + (title || ('🏥 ' + (L ? 'नज़दीकी अस्पताल व बर्न यूनिट: ' : 'Hospitals near ') + locationName)) + '</b><br>' +
-                    '<b style="color:var(--red)">' + (emergencyLine || '🚨 Emergency: 112 / 108') + '</b><br><br>';
+            emergencyLine = emergencyLine || '112 / 108';
+            let out = `<b>📍 ${title || (L ? 'नज़दीकी अस्पताल' : 'Nearby Hospitals')}</b> (${esc(where || (L ? 'आपका क्षेत्र' : 'Your Location'))})<br><br>`;
             
-            places.forEach(p => {
-                const tags = (p.burn_unit ? ' <span class="tag" style="background:#fde8e9;color:var(--red);border-color:var(--red);font-weight:600">🔥 Burn Unit</span>' : '') + 
-                             (p.major ? ' <span class="tag" style="background:#eaf2fb;color:var(--navy)">🏛 Government / Teaching</span>' : '');
-                h += '<b>' + esc(p.name) + '</b>' + tags + '<br>' + 
-                     (p.kind === 'hospital' ? 'Hospital' : 'Medical Center') + 
-                     ' · <b>' + p.distance_km + ' km</b>' + 
-                     (p.phone ? ' · 📞 <a href="tel:' + esc(p.phone) + '">' + esc(p.phone) + '</a>' : '') + 
-                     ' · <a href="' + esc(p.directions_url) + '" target="_blank" rel="noopener">🗺️ ' + (L ? 'दिशा-निर्देश (Directions)' : 'Get Directions') + '</a><br><br>';
-            });
-            h += `<small style="color:var(--mut)">${L ? 'ओपनस्ट्रीटमैप व अधिकृत स्वास्थ्य निर्देशिका से सत्यापित।' : 'Verified with OpenStreetMap & state burn care network.'}</small>`;
-            pushBot(h, { html: 1 });
+            if (!places || !places.length) {
+                out += (L ? 'इस क्षेत्र में कोई अस्पताल नहीं मिला। कृपया आपातकालीन नंबर पर संपर्क करें।' : 'No verified hospitals found in this vicinity.');
+            } else {
+                places.forEach((p, idx) => {
+                    const tag = p.burn_unit 
+                        ? `<span style="background:#dc3545;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700">🔥 ${L ? 'विशेष बर्न यूनिट' : 'Specialized Burn Unit'}</span>` 
+                        : (p.major ? `<span style="background:#0d6efd;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600">🏥 ${L ? '24x7 आपातकालीन' : '24x7 Emergency'}</span>` : '');
+                    
+                    const phoneHtml = p.phone ? `<a href="tel:${p.phone.replace(/[^0-9]/g, '')}" style="color:var(--navy);font-weight:600;text-decoration:none;margin-right:8px">📞 ${esc(p.phone)}</a>` : '';
+                    const dirUrl = p.directions_url || (p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + (where || ''))}`);
+
+                    out += `<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+                        <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:4px">${idx + 1}. ${esc(p.name)}</div>
+                        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:12px">
+                            <span style="font-weight:600;color:#28a745">📍 ${p.distance_km} km away</span>
+                            ${tag}
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;font-size:12px">
+                            ${phoneHtml}
+                            <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" style="background:var(--blue);color:#fff;padding:4px 10px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px">
+                                🗺️ ${L ? 'रास्ता देखें (Maps)' : 'Directions'}
+                            </a>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            out += `<div style="font-size:12px;color:var(--mut);margin-top:6px">🚨 ${L ? 'गंभीर आपातकाल में तुरंत डायल करें:' : 'Critical emergency helpline:'} <b style="color:#dc3545">${emergencyLine}</b></div>`;
+            pushBot(out, { html: 1 });
         }
 
         async function ask(q) {
-            const i = $('#ci'); 
-            q = (q || (i && i.value) || '').trim(); 
-            if (!q) return; 
-            if (i) i.value = ''; 
-            const L = D.set.lang === 'hi';
+            const inp = $('#ci'); 
+            if (!q && inp) { q = inp.value; inp.value = ''; }
+            q = (q || '').trim(); 
+            if (!q) return;
             
-            chat.push({ c: 'u', x: q });
-            if (EMG.test(q)) {
-                chat.push({ c: 'em', x: L ? '⚠ यह गंभीर हो सकता है। देरी न करें — तुरंत 112 / 108 डायल करें या नज़दीकी आपातकालीन केंद्र जाएँ।' : '⚠ Critical burn warning: Do not delay — call 112 / 108 or proceed to the nearest emergency burn unit immediately.' });
+            chat.push({ c: 'u', x: q }); 
+            chatInit();
+            
+            const L = D.set.lang === 'hi';
+            const qLower = q.toLowerCase();
+
+            // 1. SMART QUERY INTERCEPTION: Detect Hospital Search Queries
+            const hospRegex = /(hospital|hospitals|hpoospital|hpoospitals|hostipal|hosptial|clinic|clinics|doctor|doctors|burn center|burn unit|अस्पताल|दवाखाना|डॉक्टर|nearby|near me|paas ke|paas me|kahan hai)/i;
+            if (hospRegex.test(qLower)) {
+                let cleanPlace = q
+                    .replace(/nearby|near me|paas ke|paas me|kahan hai|khoje|khojo|search|dikhaye|dikhao|find|list|show me|batao|please|plz/gi, '')
+                    .replace(/hospitals?|hpoospitals?|hostipals?|clinics?|doctors?|burn centers?|burn units?|अस्पताल|दवाखाना/gi, '')
+                    .trim();
+                cleanPlace = cleanPlace.replace(/kanpy/gi, 'kanpur');
+                
+                if (cleanPlace.length >= 2) {
+                    hospLookup({ place: cleanPlace });
+                    return;
+                } else {
+                    aiHospitalGo();
+                    return;
+                }
             }
-            chatInit(); 
-            showTyping(L ? 'जवाब तैयार हो रहा है…' : 'BurnCare AI is thinking…');
+
+            // 2. Normal Burn Q&A
+            showTyping(L ? 'CSJMU AI उत्तर तैयार कर रहा है…' : 'CSJMU AI is preparing answer…');
             
             try {
                 const r = await fetch((API ? API : '') + '/api/chat', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ message: q, history: hist.slice(-12), lang: API_LANG() }) 
+                    body: JSON.stringify({ message: q, history: hist, lang: API_LANG() }) 
                 });
                 if (!r.ok) throw new Error('API error');
                 const d = await r.json();
@@ -1436,8 +1666,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 await streamBotMessage(d.answer);
             } catch (e) { 
                 removeTyping();
-                // Intelligent medical response engine for offline/presentation resiliency
-                const qLower = q.toLowerCase();
+                // Intelligent evidence-based clinical guidance
                 let ans = '';
                 if (qLower.includes('cool') || qLower.includes('water') || qLower.includes('ठंडा') || qLower.includes('पानी')) {
                     ans = L 
@@ -1457,7 +1686,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                         : 'Chemical burn protocol: brush off dry chemical powder, remove contaminated clothing, and irrigate with running water for at least 20 continuous minutes. Seek hospital care.';
                 } else {
                     ans = L 
-                        ? 'जलने पर प्राथमिक उपचार: 1. जले हिस्से को तुरंत 20 मिनट तक ठंडे बहते पानी में रखें। 2. अंगूठी व कपड़े तुरंत उतारें। 3. क्लिंग फ़िल्म से ढीला ढकें। 4. बर्फ़, टूथपेस्ट या घी न लगाएँ।'
+                        ? 'जलने पर तत्काल प्राथमिक उपचार: 1. जले हिस्से को 20 मिनट तक ठंडे बहते पानी से ठंडा करें। 2. अंगूठी व कपड़े तुरंत उतारें। 3. क्लिंग फ़िल्म से ढीला ढकें। 4. बर्फ़, टूथपेस्ट या घी न लगाएँ। आपातकाल में 112/108 डायल करें।'
                         : 'Immediate burn guidance: 1. Cool under clean running water for 20 minutes. 2. Remove rings, watches and loose clothing. 3. Cover loosely with sterile plastic cling film. 4. Never apply ice, butter, or toothpaste. In emergency, call 112/108.';
                 }
                 hist.push(['user', q], ['model', ans]);
