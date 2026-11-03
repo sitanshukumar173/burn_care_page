@@ -1697,10 +1697,10 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
             const data = meta || {};
             const lang = D.set.lang || 'en';
             const labels = lang === 'hi'
-                ? { kicker: 'क्लिनिकल सारांश', preliminary: 'प्रारंभिक', areas: 'जले हुए हिस्से', tbsa: 'अनुमानित TBSA', reviewed: 'जाँचे गए हिस्से', superficial: 'सतही जलन', triage: 'क्लिनिकल ट्राइएज', findings: 'महत्वपूर्ण निष्कर्ष', safety: 'सुरक्षा और अगले कदम', area: 'हिस्सा', contribution: 'TBSA योगदान', noArea: 'कोई सत्यापित जला क्षेत्र उपलब्ध नहीं है।' }
+                ? { kicker: 'क्लिनिकल सारांश', preliminary: 'प्रारंभिक', areas: 'जले हुए हिस्से', tbsa: 'अनुमानित TBSA', reviewed: 'जाँचे गए हिस्से', superficial: 'सतही जलन', noSuperficial: 'नहीं मिली', triage: 'क्लिनिकल ट्राइएज', findings: 'महत्वपूर्ण निष्कर्ष', safety: 'सुरक्षा और अगले कदम', area: 'हिस्सा', contribution: 'TBSA योगदान', noArea: 'कोई सत्यापित जला क्षेत्र उपलब्ध नहीं है।' }
                 : lang === 'hinglish'
-                    ? { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Jale hue hisse', tbsa: 'Andazan TBSA', reviewed: 'Reviewed areas', superficial: 'Sirf superficial', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety aur next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'Koi verified burned region available nahi hai.' }
-                    : { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Burned areas', tbsa: 'Estimated TBSA', reviewed: 'Areas reviewed', superficial: 'Superficial only', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety and next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'No verified burned region was returned.' };
+                    ? { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Jale hue hisse', tbsa: 'Andazan TBSA', reviewed: 'Reviewed areas', superficial: 'Sirf superficial', noSuperficial: 'None detected', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety aur next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'Koi verified burned region available nahi hai.' }
+                    : { kicker: 'Clinical summary', preliminary: 'Preliminary', areas: 'Burned areas', tbsa: 'Estimated TBSA', reviewed: 'Areas reviewed', superficial: 'Superficial only', noSuperficial: 'None detected', triage: 'Clinical triage', findings: 'Important findings', safety: 'Safety and next steps', area: 'Area', contribution: 'TBSA contribution', noArea: 'No verified burned region was returned.' };
             const lines = String(text || '').split(/\r?\n/).map(x => String(x || '').trim()).filter(Boolean);
             const decode = value => {
                 const node = document.createElement('textarea');
@@ -1759,7 +1759,7 @@ Formula: 4 mL × ${w} kg × ${tb.toFixed(1)}% TBSA = <b>${Math.round(total).toLo
                 <div class="report-summary-band">
                     <div class="report-metric"><strong>${esc(total)}%</strong><span>${labels.tbsa}</span></div>
                     <div class="report-metric"><strong>${areaCount}</strong><span>${labels.reviewed}</span></div>
-                    <div class="report-metric"><strong>${data.superficial_only ? Number(data.superficial_only).toFixed(1) + '%' : '—'}</strong><span>${labels.superficial}</span></div>
+                    <div class="report-metric"><strong>${data.superficial_only > 0 ? Number(data.superficial_only).toFixed(1) + '%' : labels.noSuperficial}</strong><span>${labels.superficial}</span></div>
                 </div>
                 <div class="report-section">${esc(plain(areaHeading) || labels.areas)}</div>
                 ${renderRows}
